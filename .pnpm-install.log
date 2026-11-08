@@ -1,0 +1,82 @@
+native/system/packages/darwin-x64        | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["darwin"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-arm64       | [WARN] Unsupported platform: wanted: {"cpu":["arm64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+native/system/packages/linux-x64         | [WARN] Unsupported platform: wanted: {"cpu":["x64"],"os":["linux"],"libc":["any"]} (current: {"os":"darwin","cpu":"arm64","libc":"unknown"})
+Scope: all 394 workspace projects
+[WARN] The store at /Users/yilukaige/Library/pnpm/store/v11 is not used because packages cannot be hard linked from it into this project. Using the store at /Users/yilukaige/deepseek-harness-master/.pnpm-store/v11 instead. Set storeDir to choose the store.
+[WARN] There are cyclic workspace dependencies: /Users/yilukaige/deepseek-harness-master/apps/cli, /Users/yilukaige/deepseek-harness-master/packages/sdk/client; /Users/yilukaige/deepseek-harness-master/apps/web, /Users/yilukaige/deepseek-harness-master/packages/test-support/client-runtime, /Users/yilukaige/deepseek-harness-master/packages/bundle/web-app; /Users/yilukaige/deepseek-harness-master/packages/api/gateway, /Users/yilukaige/deepseek-harness-master/packages/api/remote-access; /Users/yilukaige/deepseek-harness-master/packages/api/remotes, /Users/yilukaige/deepseek-harness-master/packages/client/ui-trajectory, /Users/yilukaige/deepseek-harness-master/packages/client/ui-chat, /Users/yilukaige/deepseek-harness-master/packages/client/ui-sidebar-documentpreview, /Users/yilukaige/deepseek-harness-master/packages/client/ui-sidebar-files; /Users/yilukaige/deepseek-harness-master/packages/client/ui-conversation, /Users/yilukaige/deepseek-harness-master/packages/client/ui-workspace; /Users/yilukaige/deepseek-harness-master/packages/compaction/compaction, /Users/yilukaige/deepseek-harness-master/packages/interaction/commands, /Users/yilukaige/deepseek-harness-master/packages/core/agent, /Users/yilukaige/deepseek-harness-master/packages/session/session-projection, /Users/yilukaige/deepseek-harness-master/packages/test-support/loader-smoke, /Users/yilukaige/deepseek-harness-master/packages/core/tools, /Users/yilukaige/deepseek-harness-master/packages/test-support/agent-loop-testkit, /Users/yilukaige/deepseek-harness-master/packages/core/agent-loop, /Users/yilukaige/deepseek-harness-master/packages/session/session-persistence-jsonl, /Users/yilukaige/deepseek-harness-master/packages/session/session-format-catalog, /Users/yilukaige/deepseek-harness-master/packages/compaction/compaction-image-offload, /Users/yilukaige/deepseek-harness-master/packages/compaction/compaction-basic, /Users/yilukaige/deepseek-harness-master/packages/compaction/compaction-tool-result-pruner; /Users/yilukaige/deepseek-harness-master/packages/core/agent-default-model, /Users/yilukaige/deepseek-harness-master/packages/settings/settings; /Users/yilukaige/deepseek-harness-master/packages/experimental/client-ui-creation-recommendations, /Users/yilukaige/deepseek-harness-master/packages/experimental/creation-recommendations; /Users/yilukaige/deepseek-harness-master/packages/experimental/client-ui-plugin-recommendations, /Users/yilukaige/deepseek-harness-master/packages/experimental/plugin-recommendations; /Users/yilukaige/deepseek-harness-master/packages/llm/llm-deepseek, /Users/yilukaige/deepseek-harness-master/packages/llm/llm-deepseek-api-key; /Users/yilukaige/deepseek-harness-master/packages/preset/agent-preset, /Users/yilukaige/deepseek-harness-master/packages/preset/agent-preset-registry; /Users/yilukaige/deepseek-harness-master/packages/sandbox/sandbox-local, /Users/yilukaige/deepseek-harness-master/packages/sandbox/sandbox-windows-acl; /Users/yilukaige/deepseek-harness-master/packages/session/tool-working-directory, /Users/yilukaige/deepseek-harness-master/packages/session/working-directory; /Users/yilukaige/deepseek-harness-master/packages/ssh/fs-ssh, /Users/yilukaige/deepseek-harness-master/packages/ssh/ssh; /Users/yilukaige/deepseek-harness-master/packages/subagent/subagent-spawn-in-process, /Users/yilukaige/deepseek-harness-master/packages/subagent/tool-subagent; /Users/yilukaige/deepseek-harness-master/vendor/cordis, /Users/yilukaige/deepseek-harness-master/vendor/include
+? Verifying lockfile against supply-chain policies (1755 entries)...
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +1434
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Update available! 11.28.5 → 12.18.0.
+Changelog: https://pnpm.io/v/12.18.0
+To update, run: curl -fsSL https://get.pnpm.io/install.sh | sh -
+Packages are cloned from the content-addressable store to the virtual store.
+  Content-addressable store is at: /Users/yilukaige/deepseek-harness-master/.pnpm-store/v11
+  Virtual store is at:             node_modules/.pnpm
+Progress: resolved 1434, reused 1428, downloaded 0, added 61
+Progress: resolved 1434, reused 1428, downloaded 0, added 138
+Progress: resolved 1434, reused 1428, downloaded 0, added 183
+Progress: resolved 1434, reused 1428, downloaded 0, added 245
+✓ Lockfile passes supply-chain policies (1755 entries in 4.4s)
+Progress: resolved 1434, reused 1428, downloaded 0, added 493
+Progress: resolved 1434, reused 1428, downloaded 0, added 596
+Progress: resolved 1434, reused 1428, downloaded 0, added 636
+Progress: resolved 1434, reused 1428, downloaded 0, added 723
+Progress: resolved 1434, reused 1428, downloaded 0, added 998
+Progress: resolved 1434, reused 1428, downloaded 0, added 1387
+Progress: resolved 1434, reused 1428, downloaded 0, added 1434, done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install$ node ./cnoke.cjs -P . -D src/koffi --prebuild --release
+.../node_modules/lefthook postinstall$ node postinstall.js
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Failed to load prebuilt binary, rebuilding from source
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Using CMake binary: cmake
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Node: 24.21.0
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Toolchain: native
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Using local node-api headers
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Running configuration
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: The --no-warn-unused-cli option is deprecated.  Use -Wno-unused-cli instead.
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- The C compiler identification is AppleClang 17.0.0.17000013
+.../node_modules/lefthook postinstall: │  > git rev-parse --path-format=absolute --show-toplevel --git-path hooks --git-path info --git-dir
+.../node_modules/lefthook postinstall: │    致命错误：不是 Git 仓库（或者任何父目录）：.git                                                
+.../node_modules/lefthook postinstall: │                                                                                                   
+.../node_modules/lefthook postinstall: exit status 128
+.../node_modules/lefthook postinstall: Done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- The CXX compiler identification is AppleClang 17.0.0.17000013
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- The ASM compiler identification is AppleClang
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Found assembler: /usr/bin/cc
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting C compiler ABI info
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting C compiler ABI info - done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Check for working C compiler: /usr/bin/cc - skipped
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting C compile features
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting C compile features - done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting CXX compiler ABI info
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting CXX compiler ABI info - done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Check for working CXX compiler: /usr/bin/c++ - skipped
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting CXX compile features
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Detecting CXX compile features - done
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Performing Test use_no_finite_loops
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Performing Test use_no_finite_loops - Success
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Configuring done (0.8s)
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Generating done (0.0s)
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: -- Build files have been written to: /Users/yilukaige/deepseek-harness-master/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi/build/koffi/darwin_arm64/v24.21.0_native/Release
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Running build
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: [ 25%] Generate trampoline macros
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: [ 75%] Building CXX object CMakeFiles/koffi.dir/koffi_unity.cpp.o
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: [ 75%] Building ASM object CMakeFiles/koffi.dir/src/abi/arm64_asm.S.o
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: In file included from /Users/yilukaige/deepseek-harness-master/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi/build/koffi/darwin_arm64/v24.21.0_native/Release/koffi_unity.cpp:8:
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: /Users/yilukaige/deepseek-harness-master/node_modules/.pnpm/koffi@3.1.1/node_modules/koffi/src/koffi/../../lib/native/base/base.cc:1218:10: warning: Cannot format floating point values correctly without Dragonbox [-W#warnings]
+.../.pnpm/koffi@3.1.1/node_modules/koffi install:  1218 |         #warning Cannot format floating point values correctly without Dragonbox
+.../.pnpm/koffi@3.1.1/node_modules/koffi install:       |          ^
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: 1 warning generated.
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: [100%] Linking CXX shared library Output/koffi.node
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: [100%] Built target koffi
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: >> Copy target files
+.../.pnpm/koffi@3.1.1/node_modules/koffi install: Done
+
+packages/subprocess/subprocess-local postinstall$ node scripts/ensure-spawn-helper.mjs
+packages/subprocess/subprocess-local postinstall: Done
+. postinstall$ node scripts/install-lefthook.mjs
+. postinstall: Done
+Done in 18.8s using pnpm v11.28.5
+EXIT:0

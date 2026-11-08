@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><link rel="stylesheet" href="preview.css"><title>直播中控</title></head>
+<body>
+<div class="app swap">
+  <aside class="sidebar">
+    <div class="traffic"><i></i><i></i><i></i></div>
+    <div class="brand"><div class="mark">净</div><div><b>净衡 LIVE</b><small>直播工作台</small></div></div>
+    <button class="btn primary newbtn">＋ 新建直播会话</button>
+    <div class="nav">
+      <div class="item"><svg viewBox="0 0 16 16"><path d="M2.5 8.2 8 3l5.5 5.2V13a.6.6 0 0 1-.6.6H3.1a.6.6 0 0 1-.6-.6z"/></svg>工作台首页</div>
+      <div class="item on"><svg viewBox="0 0 16 16"><path d="M3 3.4h10v6.8H6.6L3 13z"/></svg>直播会话</div>
+      <div class="item"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.4"/><path d="M8 4.8V8l2.2 1.4"/></svg>自动化任务</div>
+      <div class="item"><svg viewBox="0 0 16 16"><path d="M3 13V7M8 13V3M13 13V9"/></svg>我的数据</div>
+    </div>
+    <div class="sect">最近场次</div>
+    <div class="sess">
+      <div class="row on"><b>11-08 晚场 · 3号链接</b><span>直播中 · 已开播 42 分钟</span></div>
+      <div class="row"><b>11-07 晚场</b><span>GMV ¥412,908 · 已复盘</span></div>
+      <div class="row"><b>11-06 场</b><span>GMV ¥198,224 · 已复盘</span></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="me"><div class="avatar">凯</div><div style="flex:1"><b style="font-size:12px">一路凯歌</b><div class="small muted">运营 / 管理员</div></div></div>
+  </aside>
+
+  <aside class="rail">
+    <div class="rail-tabs">
+      <div class="rtab"><span class="dot"></span>浏览器</div>
+      <div class="rtab on">直播中控</div>
+      <div class="rtab" style="margin-left:auto;color:#a0a0a6">＋</div>
+    </div>
+    <div class="rail-body">
+      <div class="console">
+        <div class="cbase">
+          <div class="chead"><b>直播中控</b><span class="chip green">已连接</span><span class="chip">净衡好物 · 抖音</span>
+            <div class="right"><button class="btn small">暂停</button><button class="btn small btn-danger">急停</button></div>
+          </div>
+          <div class="kv">
+            <div class="c"><div class="k">在线</div><div class="v">1,234</div></div>
+            <div class="c"><div class="k">场观</div><div class="v">8,932</div></div>
+            <div class="c"><div class="k">评论</div><div class="v">2,431</div></div>
+          </div>
+        </div>
+
+        <div class="cbase">
+          <div class="chead"><b>自动讲解</b><div class="right"><span class="chip blue">运行中</span><div class="switch on"><i></i></div></div></div>
+          <div class="qrow on"><span class="idx">01</span><span class="nm">净衡冷萃咖啡液 10 条装</span><span class="chip blue">讲解中 01:12</span></div>
+          <div class="qrow"><span class="idx">02</span><span class="nm">净衡手冲挂耳咖啡 20 包</span><span class="small muted">等待</span></div>
+          <div class="qrow"><span class="idx">03</span><span class="nm">净衡咖啡杯 350ml</span><span class="small muted">等待</span></div>
+          <div class="small muted" style="margin-top:6px">间隔 45s · 循环 3 轮 · 已讲解 12 / 18 · 上次 12:04:21</div>
+        </div>
+
+        <div class="cbase">
+          <div class="chead"><b>评论与回复</b><span class="chip amber">自动发送 · 关闭</span><div class="right"><span class="small muted">人工确认模式</span></div></div>
+          <div class="cmt">
+            <div class="top"><b>小北</b><span>· 12:03:41</span></div>
+            <div class="tx">这个咖啡液怎么冲泡？</div>
+            <div class="acts"><span class="chip blue">AI 草稿</span><span class="small" style="flex:1">冷水/热水都能冲，一条兑 150ml 水，冷萃更顺口～</span><button class="btn small">发送</button></div>
+          </div>
+          <div class="cmt">
+            <div class="top"><b>阿钰</b><span>· 12:03:55</span></div>
+            <div class="tx">129 的有几袋</div>
+            <div class="acts"><span class="chip blue">AI 草稿</span><span class="small" style="flex:1">1 号链接 129 元是 10 条装，平均一条 12.9～</span><button class="btn small">发送</button></div>
+          </div>
+        </div>
+
+        <div class="cbase">
+          <div class="chead"><b>高风险操作</b><span class="chip amber">待审批 1</span></div>
+          <div class="approve">
+            <div><b>改价：3 号链接 ¥129 → ¥119</b></div>
+            <div class="small muted">Agent 提议 · 影响利润 -¥10/件 · 冷却 30 分钟</div>
+            <div style="display:flex;gap:6px;margin-top:8px"><button class="btn small primary">批准一次</button><button class="btn small">拒绝</button><span class="small muted" style="align-self:center">批准后执行并回读校验</span></div>
+          </div>
+        </div>
+
+        <div class="audit" style="padding:0 2px">最近动作（审计）· 12:04:22 list_comments 成功 · 12:04:21 popup_product 成功 · 12:03:58 reply_comment 人工发送</div>
+      </div>
+    </div>
+  </aside>
+<section class="main">
+    <div class="topbar">
+      <span class="crumb">直播会话 /</span><span class="title">11-08 晚场 · 3号链接主推</span>
+      <div class="right"><span class="chip red">直播中 00:42:18</span><span class="chip">在线 1,234</span></div>
+    </div>
+    <div class="conv" style="padding-bottom:0">
+      <div class="msg user"><div class="who">你 · 19:41</div><div class="bubble">今晚主推 3 号链接，先跑一轮弹窗讲解，评论帮我盯着，价格和库存先给我确认。</div></div>
+      <div class="msg ai"><div class="who">净衡 AI · 19:41</div><div class="bubble">
+        <p>收到。低风险自动、高风险人工：弹窗/讲解/评论采集已就绪；改价/上下架/库存进入待审批。</p>
+        <div class="toolcard"><span class="dot"></span><b>ecom_start_explaining_loop</b><span class="muted">已启动 · 3 商品 · 45s</span><span class="chip green">成功</span></div>
+        <div class="toolcard"><span class="dot"></span><b>ecom_list_comments</b><span class="muted">监听已开启</span><span class="chip green">成功</span></div>
+      </div></div>
+      <div class="msg ai"><div class="who">净衡 AI · 12:04</div><div class="bubble">有 2 条价格咨询已生成草稿，改价提议在右侧「待审批」中。</div></div>
+    </div>
+    <div class="composer"><span style="flex:1">给 AI 发消息，或输入 / 调用指令…</span><div class="arrow"><svg viewBox="0 0 16 16"><path d="M8 12V4M4.5 7.5 8 4l3.5 3.5"/></svg></div></div>
+  </section>
+
+  </div>
+
+</body></html>

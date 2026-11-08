@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "/usr/local/bin/node" "/Users/yilukaige/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/pnpm/bin/pnpm.mjs" "$@"

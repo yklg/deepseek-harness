@@ -1,0 +1,273 @@
+{
+  "version": 7,
+  "record": {
+    "identity": {
+      "formatVersion": 4,
+      "createdAt": 1794114117253,
+      "cwd": "/Users/yilukaige/Documents/deepseek-harness/default-workspace",
+      "isSeeded": false,
+      "inheritedEventCount": 0
+    },
+    "rows": {
+      "sandboxMode": {
+        "ver": 1,
+        "seq": 2,
+        "val": "workspace-write"
+      },
+      "approvalState": {
+        "ver": 1,
+        "seq": 2,
+        "val": {
+          "policy": "ask",
+          "turnOpen": false
+        }
+      },
+      "turnBoundary": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "openTurnStartSeq": null,
+          "lastStepStartSeq": null,
+          "lastStepBoundary": null,
+          "lastTurn": 0
+        }
+      },
+      "tokenMeasurement": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "headerSeq": null,
+          "stepStart": null,
+          "anchor": null,
+          "invalidSeq": null
+        }
+      },
+      "subagentModelSelectionPolicy": {
+        "ver": 1,
+        "seq": 2,
+        "val": null
+      },
+      "userQuestions": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "inheritedEventCount": 0,
+          "timed": false,
+          "questions": {
+            "active": [],
+            "settled": []
+          }
+        }
+      },
+      "turnOutline": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "turns": [],
+          "draft": ""
+        }
+      },
+      "tokenUsage": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "totals": {
+            "uncachedInputTokens": 0,
+            "outputTokens": 0,
+            "cacheReadTokens": 0,
+            "cacheWriteTokens": 0
+          },
+          "last": null
+        }
+      },
+      "sessionStats": {
+        "ver": 1,
+        "seq": 2,
+        "val": {
+          "turns": 0,
+          "steps": 0,
+          "llmMs": 0,
+          "toolMs": 0,
+          "ttftMs": 0,
+          "ttftSteps": 0,
+          "decodeMs": 0,
+          "decodeTokens": 0,
+          "lastTurn": null,
+          "openStep": null,
+          "pendingCalls": {}
+        }
+      },
+      "contextPressure": {
+        "ver": 5,
+        "seq": 2,
+        "val": {
+          "surfaceTokens": 0
+        }
+      },
+      "title": {
+        "ver": 1,
+        "seq": 2,
+        "val": null
+      },
+      "llmRetry": {
+        "ver": 1,
+        "seq": 2,
+        "val": {}
+      },
+      "goal": {
+        "ver": 6,
+        "seq": 2,
+        "val": {
+          "current": null,
+          "seenGoalIds": [],
+          "failure": null
+        }
+      },
+      "agentPreset": {
+        "ver": 1,
+        "seq": 2,
+        "val": "cordis"
+      },
+      "modelSelection": {
+        "ver": 3,
+        "seq": 2,
+        "val": {
+          "lastUsed": null,
+          "pending": null
+        }
+      },
+      "workingDirectory": {
+        "ver": 1,
+        "seq": 2,
+        "val": "/Users/yilukaige/Documents/deepseek-harness/default-workspace"
+      },
+      "contextBreakdown": {
+        "ver": 6,
+        "seq": 2,
+        "val": {
+          "systems": [],
+          "surfaceTokens": 0,
+          "breakdown": {
+            "systemTokens": 0,
+            "toolsTokens": 0,
+            "messageTokens": 0
+          }
+        }
+      },
+      "titleInput": {
+        "ver": 3,
+        "seq": 2,
+        "val": {
+          "first": null,
+          "count": 0,
+          "lastSeq": null
+        }
+      },
+      "inbox": {
+        "ver": 1,
+        "seq": 2,
+        "val": {
+          "next-turn": [],
+          "next-step": []
+        }
+      },
+      "permissions": {
+        "ver": 2,
+        "seq": 2,
+        "val": {
+          "preset": "workspace-write",
+          "sandbox": "workspace-write",
+          "approval": "ask",
+          "seeded": false
+        }
+      },
+      "subagentCatalog": {
+        "ver": 6,
+        "seq": 2,
+        "val": {
+          "inheritedEventCount": 0
+        }
+      },
+      "subagentTiming": {
+        "ver": 3,
+        "seq": 2,
+        "val": {
+          "descriptorSeen": false,
+          "settledMs": 0
+        }
+      },
+      "subagent": {
+        "ver": 2,
+        "seq": 2,
+        "val": {}
+      },
+      "agentTeam": {
+        "ver": 7,
+        "seq": 2,
+        "val": {
+          "inheritedEventCount": 0,
+          "id": "session-5c2f0e48-9eaa-460f-9fa0-2d2fb063471c",
+          "tasks": [],
+          "nextTaskNumber": 1
+        }
+      },
+      "todos": {
+        "ver": 2,
+        "seq": 2,
+        "val": null
+      },
+      "timeContext": {
+        "ver": 3,
+        "seq": 2,
+        "val": {
+          "lastMessageTime": null,
+          "lastInjectionTime": null,
+          "lastTurnInjectionTime": null,
+          "browserTurn": null,
+          "browserTimeZones": []
+        }
+      },
+      "plan": {
+        "ver": 4,
+        "seq": 2,
+        "val": {
+          "active": false,
+          "wanted": null,
+          "running": null,
+          "activeAtLastHeader": null,
+          "entered": false
+        }
+      },
+      "harnessDevLegacyPrompt": {
+        "ver": 1,
+        "seq": 2,
+        "val": {
+          "source": null,
+          "web": null
+        }
+      },
+      "conversationContinuation": {
+        "ver": 4,
+        "seq": 2,
+        "val": {
+          "admitted": false,
+          "failedAttempt": false,
+          "ending": null
+        }
+      },
+      "sessionListMetadata": {
+        "ver": 1,
+        "seq": 2,
+        "val": {
+          "blank": true,
+          "lastPromptAt": null
+        }
+      },
+      "imageLimits": {
+        "ver": 1,
+        "seq": 2,
+        "val": null
+      }
+    }
+  }
+}

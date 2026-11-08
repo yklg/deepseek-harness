@@ -1,0 +1,29 @@
+{
+  "unit": {
+    "name": "workspace",
+    "version": 2
+  },
+  "global": {
+    "initialized": true,
+    "workspaceIds": [
+      "32e460b3-808e-4289-b646-6de19a8c8898"
+    ],
+    "archivedSessionIds": [],
+    "pinnedSessionIds": [],
+    "defaultWorkspaceId": "32e460b3-808e-4289-b646-6de19a8c8898"
+  },
+  "tables": {
+    "workspaces": {
+      "32e460b3-808e-4289-b646-6de19a8c8898": {
+        "path": "/Users/yilukaige/Documents/deepseek-harness/default-workspace",
+        "title": "default-workspace",
+        "sessionIds": [
+          "session-5c2f0e48-9eaa-460f-9fa0-2d2fb063471c",
+          "session-241b05b4-ac02-409c-92fe-1c305c0a3318"
+        ],
+        "createdAt": "2026-11-08T04:48:02.778Z",
+        "updatedAt": "2026-11-08T05:01:57.264Z"
+      }
+    }
+  }
+}

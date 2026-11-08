@@ -1,18 +1,20 @@
 /**
  * The Sidebar's seat in the frame, and the panel it draws.
  *
- * The frame owns the right column's geometry; this package owns one content
- * tree at the column width or spanning the viewport. A shown wide panel
- * retains its track in fullscreen, preserving the conversation width. Below
- * 768px fullscreen is derived from viewport width, without changing manual mode.
+ * The frame owns the browser rail's geometry; this package owns one content
+ * tree at the track width or spanning the viewport. A shown wide panel retains
+ * its track in fullscreen, preserving the conversation width. Below 768px
+ * fullscreen is derived from viewport width, without changing manual mode.
  *
- * Docked content stays mounted while collapsed, translated off the frame's right
- * edge, so opening and closing are one gesture in both presentations: a slide
- * from and to that edge. An item mounted by the opening, such as the first tab
- * of an empty column, starts at that edge, so it joins the slide. Normal
- * presentation moves the frame's tracks with the panel. A fullscreen opening
- * reserves its underlying track only after the panel covers the frame, without
- * animating those hidden columns.
+ * Normal presentation fills the rail track from its left edge (the stationary
+ * sidebar boundary), so the frame's track animation resizes the panel as it
+ * opens and closes. Docked content stays mounted while collapsed and is hidden
+ * there; the closed panel is a zero-width box that clips its own overflow.
+ * Fullscreen fixes the panel to the frame instead, because the rail sits
+ * between the sidebar and the conversation: a panel covering the viewport is
+ * right-anchored under the native caption. Fullscreen opening reserves its
+ * underlying track only after the panel covers the frame, without animating
+ * those hidden columns.
  *
  * The panel has no header of its own: its two controls — presentation switch
  * and collapse — ride the docking kit's chrome seat at the end of the top-right
@@ -29,7 +31,7 @@
  * signal, actions — is read through the slot-owned useTabInfo hook. The Tab
  * domain follows each session's store commits, including sessions off screen.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import type { ContextMenuTarget } from '@deepseek-ai/dsh-client-ui-context-menu/client'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
@@ -307,7 +309,7 @@ function PanelChrome({ sessionId, fullscreen, actions, t, shortcuts, toggleFulls
 
 /**
  * The panel: the docked surface with the two controls in its top-right strip,
- * anchored to the frame's right edge and slid off it while collapsed.
+ * filling the rail track from its left edge and, in fullscreen, the viewport.
  */
 function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<HTMLDivElement> }): ReactNode {
   const { sessionId, surface, actions, t, openTab, width, reportRoom, fullscreen, panelRef } = panel
@@ -324,28 +326,15 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
     played.current = flash.serial
     return panel.active ? flashPane(panelRef.current, flash) : undefined
   }, [flash, panel.active, panelRef])
-  // True from the render that opens the on-screen panel until a transition in
-  // it ends, the panel closes, or it leaves the screen, which cancels the
-  // slide; the stylesheet starts items mounted meanwhile at the closed position.
-  const [opened, setOpened] = useState(expanded)
-  const [opening, setOpening] = useState(false)
-  if (opened !== expanded) {
-    setOpened(expanded)
-    setOpening(expanded && panel.active)
-  } else if (opening && !panel.active) {
-    setOpening(false)
-  }
   return (
     <div
       ref={panelRef}
       className={css.panel}
-      style={{ width: fullscreen ? '100vw' : width,
+      style={{ width: fullscreen ? '100vw' : '100%',
         '--dsh-sidebar-width': fullscreen ? '100vw' : `${width}px` } as CSSProperties}
       data-sidebar-right-session={sessionId}
       data-sidebar-right-panel={fullscreen ? 'fullscreen' : 'push'}
       data-sidebar-right-open={expanded || undefined}
-      data-sidebar-right-opening={opening || undefined}
-      onTransitionEnd={opening ? () => { setOpening(false) } : undefined}
       // Dockkit hides individual docked hosts; floating descendants remain accessible.
       aria-hidden={(!expanded && surface.layout.floats.length === 0) || undefined}
     >
@@ -415,12 +404,13 @@ export function RightbarSeat({
   // Read only when the fullscreen command runs, after this commit has settled.
   useLayoutEffect(() => { reportAutoFullscreen(autoFullscreen) }, [reportAutoFullscreen, autoFullscreen])
 
-  // The open/close slide needs no pulse of its own: the shell's window drag
-  // watcher (ui-web) measures the marked rows every frame the surface moves and
-  // sets the recall mark itself (electron#32341).
+  // The open/close track resize needs no pulse of its own: the shell's window
+  // drag watcher (ui-web) measures the marked rows every frame the surface moves
+  // and sets the recall mark itself (electron#32341).
 
-  // Fullscreen leaves the previous column report in force until its own slide
-  // completes. Normal presentation and zero-duration transitions report before paint.
+  // Fullscreen leaves the previous column report in force until an entering
+  // transform transition completes. Normal presentation and zero-duration
+  // transitions report before paint.
   useLayoutEffect(() => {
     if (!active) return
     let disposed = false

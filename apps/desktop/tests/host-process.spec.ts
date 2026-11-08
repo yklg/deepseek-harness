@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
-import { DesktopHostFatalError, DesktopHostProcess, DesktopHostUncleanExitError, QUIT_INSPECTION_DEADLINE_MS } from '../src/host-process.ts'
+import { DesktopHostFatalError, DesktopHostProcess, DesktopHostUncleanExitError, QUIT_INSPECTION_DEADLINE_MS,
+  type DesktopWorkbenchHost } from '../src/host-process.ts'
 import { OperationJournal } from '../src/operation-journal.ts'
 import { readOperationHistory } from '../src/operation-history.ts'
 import { renderCrashReport } from '../src/crash-report.ts'
@@ -67,6 +68,54 @@ process.on('message', message => {
 })
 `
 
+
+const WORKBENCH_HOST = `
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+const directory = process.argv[3]
+const responses = []
+const record = () => {
+  if (responses.length === 2) writeFileSync(join(directory, 'workbench-responses.json'), JSON.stringify(responses))
+}
+process.send({ type: 'ready', url: 'http://127.0.0.1:3080/' })
+process.send({ type: 'workbench-request', requestId: 'first', op: 'automation/targets', params: {} })
+process.send({ type: 'workbench-request', requestId: 'second', op: 'automation/eval', params: { targetId: 'lease', script: '1' } })
+process.on('message', message => {
+  if (message.type === 'workbench-response') { responses.push(message); record(); return }
+  if (message.type === 'shutdown') { process.send({ type: 'shutdown-complete' }, () => process.disconnect()) }
+})
+`
+
+const WORKBENCH_EVENT_HOST = `
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+const directory = process.argv[3]
+const events = []
+process.send({ type: 'ready', url: 'http://127.0.0.1:3080/' })
+process.on('message', message => {
+  if (message.type === 'workbench-event') {
+    events.push(message.event)
+    writeFileSync(join(directory, 'workbench-events.json'), JSON.stringify(events))
+    return
+  }
+  if (message.type === 'shutdown') { process.send({ type: 'shutdown-complete' }, () => process.disconnect()) }
+})
+`
+
+interface RecordedWorkbenchResponse {
+  readonly type: string
+  readonly requestId: string
+  readonly ok: boolean
+  readonly value?: unknown
+  readonly error?: { readonly code: string; readonly message: string }
+}
+
+async function workbenchResponses(directory: string): Promise<RecordedWorkbenchResponse[]> {
+  const file = join(directory, 'workbench-responses.json')
+  await expect.poll(() => existsSync(file), { timeout: 5_000 }).toBe(true)
+  return JSON.parse(readFileSync(file, 'utf8')) as RecordedWorkbenchResponse[]
+}
+
 function projectWithHost(source = HTTP_HOST): string {
   const project = mkdtempSync(join(tmpdir(), 'dsh-desktop-host-test-'))
   roots.push(project)
@@ -79,8 +128,10 @@ function projectWithHost(source = HTTP_HOST): string {
 
 function hostProcess(
   runtime: string, profile = runtime, onFailure?: (error: Error) => void, environment = process.env,
+  workbench?: DesktopWorkbenchHost,
 ): DesktopHostProcess {
-  const host = new DesktopHostProcess(process.execPath, runtime, profile, undefined, environment, onFailure)
+  const host = new DesktopHostProcess(process.execPath, runtime, profile, undefined, environment, onFailure,
+    undefined, undefined, undefined, undefined, workbench)
   hosts.push(host)
   return host
 }
@@ -360,4 +411,86 @@ it.each([undefined, '', 7])('rejects malformed Platform account identity %s on p
   await expect(host.start()).rejects.toThrow('invalid IPC event')
   expect(changed.mock.calls).toEqual([[null]])
   await host.stop()
+})
+
+describe('desktop host workbench protocol', () => {
+  it('routes Host workbench requests to the injected handler and answers over private IPC', async () => {
+    const runtime = projectWithHost(WORKBENCH_HOST)
+    const handle = vi.fn(async (op: string, _params: Readonly<Record<string, unknown>>) =>
+      op === 'automation/targets' ? [{ targetId: 'lease' }] : 42)
+    const host = hostProcess(runtime, runtime, undefined, process.env, { handle })
+    await host.start()
+    const responses = await workbenchResponses(runtime)
+    expect(responses).toHaveLength(2)
+    expect(responses.find(response => response.requestId === 'first')).toMatchObject({
+      type: 'workbench-response', ok: true, value: [{ targetId: 'lease' }] })
+    expect(responses.find(response => response.requestId === 'second')).toMatchObject({ type: 'workbench-response', ok: true, value: 42 })
+    expect(handle.mock.calls).toEqual([
+      ['automation/targets', {}],
+      ['automation/eval', { targetId: 'lease', script: '1' }],
+    ])
+    await host.stop()
+  })
+
+  it('answers handler failures with their typed code and unanswered requests at the deadline', async () => {
+    const runtime = projectWithHost(WORKBENCH_HOST)
+    const handle = vi.fn((op: string, _params: Readonly<Record<string, unknown>>) => {
+      if (op === 'automation/targets') {
+        return Promise.reject(Object.assign(new Error('origin denied'), { code: 'target/origin-denied' }))
+      }
+      return new Promise<unknown>(() => {})
+    })
+    const host = hostProcess(runtime, runtime, undefined, process.env, { handle, deadlineMs: 30 })
+    await host.start()
+    const responses = await workbenchResponses(runtime)
+    expect(responses.find(response => response.requestId === 'first')).toMatchObject({
+      ok: false, error: { code: 'target/origin-denied', message: 'origin denied' } })
+    expect(responses.find(response => response.requestId === 'second')).toMatchObject({
+      ok: false, error: { code: 'workbench/timeout' } })
+    await host.stop()
+  })
+
+  it.each([
+    ['a malformed request', "process.send({ type: 'workbench-request', requestId: 42, op: 'automation/eval', params: {} })"],
+    ['a reversed response', "process.send({ type: 'workbench-response', requestId: 'reversed', ok: true, value: 1 })"],
+  ])('terminates the Host on %s', async (_name, message) => {
+    const runtime = projectWithHost(`
+process.send({ type: 'ready', url: 'http://127.0.0.1:3080/' })
+${message}
+`)
+    const failure = vi.fn()
+    const host = hostProcess(runtime, runtime, failure)
+    await host.start()
+    await expect.poll(() => failure.mock.calls.length, { timeout: 5_000 }).toBe(1)
+    expect(String(failure.mock.calls[0]?.[0])).toContain('invalid IPC event')
+    await host.stop()
+  })
+
+  it('forwards automation lifecycle events to the Host', async () => {
+    const runtime = projectWithHost(WORKBENCH_EVENT_HOST)
+    const host = hostProcess(runtime, runtime)
+    await host.start()
+    host.publishWorkbenchEvent({ type: 'target-closed', targetId: 'lease-1', reason: 'crashed' })
+    const file = join(runtime, 'workbench-events.json')
+    await expect.poll(() => existsSync(file), { timeout: 5_000 }).toBe(true)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual([
+      { type: 'target-closed', targetId: 'lease-1', reason: 'crashed' },
+    ])
+    await host.stop()
+  })
+
+  it('settles a pending workbench request when the Host disconnects', async () => {
+    const runtime = projectWithHost(`
+process.send({ type: 'ready', url: 'http://127.0.0.1:3080/' })
+process.send({ type: 'workbench-request', requestId: 'pending', op: 'automation/eval', params: {} })
+setTimeout(() => { process.exit(0) }, 20)
+`)
+    const failure = vi.fn()
+    const handle = vi.fn(() => new Promise<unknown>(() => {}))
+    const host = hostProcess(runtime, runtime, failure, process.env, { handle })
+    await host.start()
+    await expect.poll(() => failure.mock.calls.length, { timeout: 5_000 }).toBe(1)
+    expect(String(failure.mock.calls[0]?.[0])).toContain('stopped')
+    await host.stop()
+  })
 })

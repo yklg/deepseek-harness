@@ -34,8 +34,8 @@
 - [x] 源码基线提交 + `product/ecom-workbench` 分支
 - [x] 布局互换（ui-layout）：列序 sidebar | browser rail | conversation，`BROWSER_MIN=420`、`CHAT_MIN=400`，手柄位置/方向，Windows 圆角归属（afb75c83）
 - [x] 列宽持久化：`createLayoutStore({ storage })` + `dsh.layout.rightbar`（afb75c83，测试含写读同 key/损坏复位/写失败降级）
-- [ ] 右栏镜像（ui-sidebar-right）——进行中
-- [ ] Desktop broker / persist 分区 / clearStorage
+- [x] 右栏镜像（ui-sidebar-right）：push 面板贴轨道左缘（left:0，width 100%）、移除横向 slide（轨道动画驱动）、全屏改 position:fixed 贴视口右缘；CSS 契约/seat/README 已更新。注意 apps/web/tests/sidebar-right.e2e.ts 仍按旧 slide 断言，W4 随 test:web 快照一起更新
+- [x] Desktop broker / persist 分区（`persist:dsh-sidebar-browser-<sha256>`）/ clearStorage / Host↔Main workbench 协议（新增 `result/too-large` 错误码）；bridge 类型已补 `clearStorage`。未做：Host 侧客户端消费、真实 Electron 行为验证
 - [x] profile 迁移：product bundle 常量 + `createPluginProfile`/`ensureProfileBundles`（幂等/保留自定义/损坏 fail loud）+ `disableAllPlugins` 恢复列表保留产品 bundle；`apps/cli` 依赖声明产品 bundle
 - [ ] ecom 包骨架 + bundle
 - [ ] dev:desktop 手验

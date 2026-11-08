@@ -25,6 +25,7 @@ export const DESKTOP_IPC = {
   bootFailed: 'dsh-desktop:boot-failed',
   browserAcquire: 'dsh-desktop:browser-acquire',
   browserRelease: 'dsh-desktop:browser-release',
+  browserClearStorage: 'dsh-desktop:browser-clear-storage',
   browserOpenRequested: 'dsh-desktop:browser-open-requested',
   directoryPick: 'dsh-desktop:directory-pick',
   fileDragPrepare: 'dsh-desktop:file-drag-prepare',
@@ -89,11 +90,21 @@ export interface DesktopUpdatePresentation {
   readonly configurationError?: DesktopChannelState['error']
 }
 
+/** Desktop-shell browser bridge; extends the renderer bridge with workspace storage reset. */
+export interface DshDesktopBrowserBridge extends DesktopBrowserBridge {
+  /**
+   * Erase one workspace's guest storage; the workspace keeps its persistent partition.
+   * @param workspace - workspace identity previously passed to `acquire`.
+   * @returns completion after storage data and HTTP cache are cleared.
+   */
+  clearStorage(workspace: string): Promise<void>
+}
+
 /** Product documents cannot supply update versions, package URLs, or installation authorization. */
 export interface DshDesktopProductApi {
   readonly fileActions: DesktopFileActions
   readonly protocolVersion: 1
-  readonly browser: DesktopBrowserBridge
+  readonly browser: DshDesktopBrowserBridge
   readonly fileDrag: DesktopFileDrag
   readonly keyboard: DesktopKeyboardApi
   readonly shortcuts: DesktopShortcutsApi

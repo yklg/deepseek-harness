@@ -24,4 +24,10 @@ export interface DesktopBrowserBridge {
   release(lease: DesktopBrowserLeaseId): Promise<void>
   /** @param lease - originating guest. @param listener - approved URL consumer. @returns unsubscribe callback. */
   onOpenRequested(lease: DesktopBrowserLeaseId, listener: (url: string) => void): () => void
+  /**
+   * Clear one workspace's persistent browser storage (cookies, localStorage, cache).
+   * @param workspace - resolved storage account; its partition is reusable afterwards.
+   * @returns after the partition's storage and cache were cleared.
+   */
+  clearStorage(workspace: string): Promise<void>
 }

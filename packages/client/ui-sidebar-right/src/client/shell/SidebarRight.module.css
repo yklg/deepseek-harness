@@ -6,19 +6,21 @@
  */
 
 /*
- * One content tree uses the frame's width normally and fills the viewport in
+ * One content tree fills the browser rail's track normally and the viewport in
  * fullscreen. The frame retains a shown wide panel's track in both modes.
  *
- * Hidden, docked Grid items translate off the frame's right edge rather than
- * unmounted, so showing and hiding are one slide in both presentations. The
- * transform rides the same variables as the frame's track transition (ui-theme
- * base.css); while squeezing, the panel's left edge and the conversation's right
- * edge therefore travel together. Visibility flips after the slide so the box
- * is out of reach once off-edge, and flips back before the slide starts.
+ * The normal panel is anchored to the rail column's left edge (the sidebar
+ * boundary, which never moves) at the track's width, so the frame's track
+ * animation resizes it as the panel opens and closes. Docked items stay mounted
+ * while the rail is collapsed and are hidden there; the closed panel is a
+ * zero-width box, so hiding is all that remains of the closed state.
+ * Visibility flips back before the track starts growing the panel.
  *
- * The normal panel is below frame overlays (20); fullscreen (40) covers the
- * frame and remains below independently floating panels (60). The common
- * content root owns no stacking context or transform.
+ * The fullscreen panel leaves the rail for the frame: the rail now sits between
+ * the sidebar and the conversation, so a right-anchored fixed panel covers the
+ * viewport instead. The normal panel is below frame overlays (20); fullscreen
+ * (40) covers the frame and remains below independently floating panels (60).
+ * The common content root owns no stacking context or transform.
  */
 .session {
   display: contents;
@@ -33,12 +35,13 @@
   --dsh-dockkit-float-layer: 60;
   position: absolute;
   top: 0;
-  right: 0;
   bottom: 0;
+  left: 0;
+  right: auto;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* Hidden docked items sit past the frame's right edge. Unclipped, they widen
+  /* A collapsed rail is a zero-width box. Unclipped, its docked content widens
      the frame's scrollable overflow, and a caret reveal (PageUp in a text field
      outside macOS) scrolls the `overflow: hidden` frame sideways. `clip` keeps
      that overflow here without making the panel a scroll container, and does
@@ -47,40 +50,36 @@
   pointer-events: none;
 }
 
-/* Only docked Grid items slide. Their common ancestor remains untransformed
-   and without a stacking context, so fixed floating children escape. */
+/* Only docked Grid items hide. Their common ancestor remains untransformed and
+   without a stacking context, so fixed floating children escape. Hiding waits
+   for the closing track animation so the content leaves with it, and starts
+   before the opening animation so the content arrives with the growing rail. */
 .panel :global([data-dockkit-host='dock']),
 .panel :global([data-dockkit-empty]),
 .panel :global([data-dockkit-divider]) {
-  transform: translateX(var(--dsh-sidebar-width));
   visibility: hidden;
-  transition:
-    transform var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    visibility 0s linear var(--ds-transition-duration-slow);
+  transition: visibility 0s linear var(--ds-transition-duration-slow);
 }
 
 .panel[data-sidebar-right-open] :global([data-dockkit-host='dock']),
 .panel[data-sidebar-right-open] :global([data-dockkit-empty]),
 .panel[data-sidebar-right-open] :global([data-dockkit-divider]) {
-  transform: none;
   visibility: visible;
-  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transition: none;
 }
 
-/* An item mounted by the opening has no closed style to slide from; it starts
-   at the closed position like the items already mounted. Only an opening
-   marks the panel, so items that mount while it stays open, or that a
-   Session switch shows, appear in place. */
-@starting-style {
-  .panel[data-sidebar-right-opening] :global([data-dockkit-host='dock']),
-  .panel[data-sidebar-right-opening] :global([data-dockkit-empty]),
-  .panel[data-sidebar-right-opening] :global([data-dockkit-divider]) {
-    transform: translateX(var(--dsh-sidebar-width));
-  }
-}
-
+/* Fullscreen leaves the rail: the panel fills the viewport, right-anchored
+   under the native caption, while the reported track stays in place beneath
+   it. A fixed box is its own stacking context, so it states the layer its
+   docked content used to state from inside the frame: the same 40, below
+   floating panels (60) and below the sidebar drawer (70). */
 .panel[data-sidebar-right-panel='fullscreen'] {
   --dsh-dockkit-dock-layer: 40;
+  position: fixed;
+  top: var(--dsh-windows-titlebar-height, 0px);
+  right: 0;
+  left: auto;
+  z-index: 40;
 }
 
 /* No whole-box subtraction here: Electron drag regions are window geometry,

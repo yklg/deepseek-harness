@@ -25,7 +25,24 @@ interface PlatformSessionEvent {
   readonly session: PlatformSession | null
 }
 
-type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | {
+/** One Host automation request; the Host correlates `requestId` with its answer. */
+interface WorkbenchRequestEvent {
+  readonly type: 'workbench-request'
+  readonly requestId: string
+  readonly op: string
+  readonly params: Readonly<Record<string, unknown>>
+}
+
+/** Shell answer to one {@link WorkbenchRequestEvent}. */
+interface WorkbenchResponseEvent {
+  readonly type: 'workbench-response'
+  readonly requestId: string
+  readonly ok: boolean
+  readonly value?: unknown
+  readonly error?: { readonly code: string; readonly message: string }
+}
+
+type DesktopHostEvent = ReadyEvent | FatalEvent | PlatformSessionEvent | WorkbenchRequestEvent | WorkbenchResponseEvent | {
   readonly type: 'starting'
   readonly runId: PluginOperationRunId
 } | { readonly type: 'shutdown-complete' } | {
@@ -105,6 +122,21 @@ function isDesktopHostEvent(message: unknown): message is DesktopHostEvent {
     case 'quit-inspection':
       return Number.isSafeInteger(candidate.requestId) && typeof candidate.activeTasks === 'boolean'
         && typeof candidate.scheduledTasks === 'boolean' && (candidate.error === undefined || typeof candidate.error === 'string')
+    case 'workbench-request':
+      return typeof candidate.requestId === 'string' && candidate.requestId.length > 0
+        && candidate.requestId.length <= MAX_WORKBENCH_REQUEST_ID_CHARS
+        && typeof candidate.op === 'string' && candidate.op.length > 0
+        && candidate.op.length <= MAX_WORKBENCH_OP_CHARS
+        && typeof candidate.params === 'object' && candidate.params !== null && !Array.isArray(candidate.params)
+    case 'workbench-response': {
+      if (typeof candidate.requestId !== 'string' || candidate.requestId.length === 0) return false
+      if (candidate.ok === true) return 'value' in candidate
+      if (candidate.ok !== false) return false
+      const error = candidate.error
+      return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+        && error.code.length > 0 && error.code.length <= MAX_WORKBENCH_ERROR_CODE_CHARS
+        && 'message' in error && typeof error.message === 'string'
+    }
     default:
       return false
   }
@@ -121,6 +153,46 @@ async function exitsWithin(exit: Promise<void>, milliseconds: number): Promise<b
   } finally {
     if (timer !== undefined) clearTimeout(timer)
   }
+}
+
+/** Deadline for one Host automation request before the shell answers with `workbench/timeout`. */
+export const WORKBENCH_REQUEST_DEADLINE_MS = 15_000
+
+const MAX_WORKBENCH_REQUEST_ID_CHARS = 128
+const MAX_WORKBENCH_OP_CHARS = 128
+const MAX_WORKBENCH_ERROR_CODE_CHARS = 128
+
+/** Automation request handler injected by the shell. */
+export interface DesktopWorkbenchHost {
+  /**
+   * Answer one validated Host automation request.
+   * @param op - Host-selected operation name.
+   * @param params - Host-supplied parameters object.
+   * @returns JSON-serializable result delivered as the response value.
+   */
+  handle(op: string, params: Readonly<Record<string, unknown>>): Promise<unknown>
+  /** Answer deadline; defaults to {@link WORKBENCH_REQUEST_DEADLINE_MS}. */
+  readonly deadlineMs?: number
+}
+
+/** Lifecycle notification the shell forwards to the Host over the private channel. */
+export interface DesktopWorkbenchEvent {
+  readonly type: 'target-closed'
+  readonly targetId: string
+  readonly reason: 'closed' | 'crashed'
+}
+
+interface PendingWorkbenchRequest {
+  done: boolean
+  readonly timer: ReturnType<typeof setTimeout>
+}
+
+function workbenchError(error: unknown): { readonly code: string; readonly message: string } {
+  if (typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+    && error.code.length > 0 && error.code.length <= MAX_WORKBENCH_ERROR_CODE_CHARS) {
+    return { code: error.code, message: error instanceof Error ? error.message : 'desktop automation request failed' }
+  }
+  return { code: 'workbench/handler-failed', message: error instanceof Error ? error.message : 'desktop automation request failed' }
 }
 
 /** Browser authentication URL reported by the running Web application. */
@@ -174,6 +246,7 @@ export class DesktopHostProcess {
     resolve: (response: DesktopHostControlResponse) => void
     reject: (error: Error) => void
   }>()
+  private readonly workbenchRequests = new Map<string, PendingWorkbenchRequest>()
 
   /**
    * @param node - Absolute Electron executable in Node mode.
@@ -187,6 +260,7 @@ export class DesktopHostProcess {
    * @param packageManager - Bundled pnpm entry and Node launcher directory, scoped to package operations.
    * @param onPlatformSession - Private credential updates for embedded Platform views.
    * @param onPluginOperation - Optional diagnostic sink; malformed records are ignored without failing the Host.
+   * @param workbench - Optional automation request handler; without one every request is answered as unavailable.
    */
   constructor(
     private readonly node: string,
@@ -200,6 +274,7 @@ export class DesktopHostProcess {
 
     private readonly onPlatformSession?: (session: PlatformSession | null) => void,
     private readonly onPluginOperation?: (record: PluginOperationRecord) => void,
+    private readonly workbench?: DesktopWorkbenchHost,
   ) {}
 
   /**
@@ -239,6 +314,16 @@ export class DesktopHostProcess {
         return
       }
       if (!isDesktopHostEvent(message)) {
+        this.fail(new Error('dsh desktop host sent an invalid IPC event'))
+        child.kill('SIGTERM')
+        return
+      }
+      if (message.type === 'workbench-request') {
+        void this.answerWorkbenchRequest(message)
+        return
+      }
+      if (message.type === 'workbench-response') {
+        // Answers travel main → Host; the reverse direction is a protocol violation.
         this.fail(new Error('dsh desktop host sent an invalid IPC event'))
         child.kill('SIGTERM')
         return
@@ -303,6 +388,101 @@ export class DesktopHostProcess {
     const response = await this.control({ type: 'file-drag-resource', address }, 12_000, 'File drag authorization timed out', 'file drag', signal)
     if (response.type !== 'file-drag-resource') throw new Error('Host returned a different control response')
     return response.resource
+  }
+
+  /**
+   * Forward one automation lifecycle event to the Host; events sent while the Host is
+   * unavailable are dropped because a restarted Host has no targets to reconcile.
+   * @param event - JSON-serializable lifecycle event.
+   */
+  publishWorkbenchEvent(event: DesktopWorkbenchEvent): void {
+    const child = this.child
+    if (child === undefined || !child.connected || this.stopping || this.failureReported) return
+    try {
+      child.send({ type: 'workbench-event', event }, (error) => {
+        if (error === null || this.stopping || this.failureReported) return
+        this.fail(error)
+      })
+    } catch (error) {
+      // A channel that closed synchronously is also reported by the child's close event.
+      this.fail(error instanceof Error ? error : new Error('desktop workbench event failed'))
+    }
+  }
+
+  private async answerWorkbenchRequest(message: WorkbenchRequestEvent): Promise<void> {
+    const child = this.child
+    if (child === undefined || !child.connected || this.stopping || this.failureReported) return
+    const workbench = this.workbench
+    if (workbench === undefined) {
+      this.sendWorkbenchResponse({ type: 'workbench-response', requestId: message.requestId, ok: false,
+        error: { code: 'workbench/unavailable', message: 'desktop automation is unavailable' } })
+      return
+    }
+    if (this.workbenchRequests.has(message.requestId)) {
+      this.sendWorkbenchResponse({ type: 'workbench-response', requestId: message.requestId, ok: false,
+        error: { code: 'workbench/duplicate-request', message: 'desktop automation request id is already pending' } })
+      return
+    }
+    const pending: PendingWorkbenchRequest = {
+      done: false,
+      timer: setTimeout(() => {
+        this.finishWorkbenchRequest(message.requestId, pending, {
+          type: 'workbench-response', requestId: message.requestId, ok: false,
+          error: { code: 'workbench/timeout', message: 'desktop automation request timed out' },
+        })
+      }, Math.max(1, workbench.deadlineMs ?? WORKBENCH_REQUEST_DEADLINE_MS)),
+    }
+    this.workbenchRequests.set(message.requestId, pending)
+    let result: unknown
+    try {
+      result = await workbench.handle(message.op, message.params)
+    } catch (error) {
+      this.finishWorkbenchRequest(message.requestId, pending, {
+        type: 'workbench-response', requestId: message.requestId, ok: false, error: workbenchError(error),
+      })
+      return
+    }
+    const answer = result === undefined ? null : result
+    if (typeof answer === 'function' || typeof answer === 'symbol') {
+      this.finishWorkbenchRequest(message.requestId, pending, {
+        type: 'workbench-response', requestId: message.requestId, ok: false,
+        error: { code: 'workbench/result-not-json', message: 'desktop automation result is not JSON-serializable' },
+      })
+      return
+    }
+    try { JSON.stringify(answer) } catch (_error) {
+      // A non-serializable answer must fail its request, not the private IPC channel.
+      this.finishWorkbenchRequest(message.requestId, pending, {
+        type: 'workbench-response', requestId: message.requestId, ok: false,
+        error: { code: 'workbench/result-not-json', message: 'desktop automation result is not JSON-serializable' },
+      })
+      return
+    }
+    this.finishWorkbenchRequest(message.requestId, pending, {
+      type: 'workbench-response', requestId: message.requestId, ok: true, value: answer,
+    })
+  }
+
+  private finishWorkbenchRequest(requestId: string, pending: PendingWorkbenchRequest, response: WorkbenchResponseEvent): void {
+    if (pending.done) return
+    pending.done = true
+    clearTimeout(pending.timer)
+    this.workbenchRequests.delete(requestId)
+    this.sendWorkbenchResponse(response)
+  }
+
+  private sendWorkbenchResponse(response: WorkbenchResponseEvent): void {
+    const child = this.child
+    if (child === undefined || !child.connected || this.stopping || this.failureReported) return
+    try {
+      child.send(response, (error) => {
+        if (error === null || this.stopping || this.failureReported) return
+        this.fail(error)
+      })
+    } catch (error) {
+      // A channel that closed synchronously is also reported by the child's close event.
+      this.fail(error instanceof Error ? error : new Error('desktop workbench response failed'))
+    }
   }
 
   private async control(
@@ -372,6 +552,8 @@ export class DesktopHostProcess {
     this.readyReject(error)
     for (const request of this.controlRequests.values()) request.reject(error)
     this.controlRequests.clear()
+    for (const pending of this.workbenchRequests.values()) clearTimeout(pending.timer)
+    this.workbenchRequests.clear()
     if (!this.failureReported && !this.stopping) {
       this.failureReported = true
       try { this.onFailure?.(error) } catch (listenerError) {

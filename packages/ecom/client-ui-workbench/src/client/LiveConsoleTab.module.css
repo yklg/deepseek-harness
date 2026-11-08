@@ -48,7 +48,7 @@
   padding: 8px 10px;
   border-radius: var(--dsw-radius-sm);
   color: var(--dsw-alias-state-error-primary);
-  background: var(--dsw-alias-bg-layer-2);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent);
   font-size: 12px;
   line-height: 1.6;
 }

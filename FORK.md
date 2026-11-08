@@ -69,6 +69,15 @@
 - Electron 实机（2026-11-08）：`pnpm run start:desktop` 拉起 `Harness Dev.app`，Host 子进程加载 desktop profile（base + web-app + ecom-workbench）并监听 127.0.0.1:64476；runtime Office 冒烟通过；用户确认 Ecom workbench 状态与 live console 正常。
 - Web e2e（keyless 组装浏览器）：`apps/web/tests/ecom-workbench.e2e.ts` + `apps/web/tests/sidebar-right.e2e.ts`，23/23 tests PASS。ecom 用例证明侧栏入口、Host `workbench` Remote、云营未配置态、live-console 事件流与 web profile 的「自动化不可用」降级全链路可达。本机 Playwright 1.61.1 需要的 Chromium 1228 下载在 0% 卡住，改用缓存 Chromium 1243（临时 `PLAYWRIGHT_BROWSERS_PATH` 符号链接）执行；CI 使用自身固定浏览器。
 
+## W1 深验记录：Electron broker（2026-11-08）
+
+- 新标签打开 `https://example.com` 拿到 lease 后：Host status `available/connected=true`；`attach` 成功返回 targetId；`evaluate document.title` → `"Example Domain"`，`21 * 2` → `42`。
+- 单 target 串行：并发两次 evaluate（首个脚本延时 300ms），guest 内顺序为 `["first","second"]`，总耗时 312ms。
+- 错误码：missing target → `target/not-found`；脚本返回函数 → `result/not-json`；detach 后 evaluate → `target/not-found`；`targets` → `[]`。
+- 修复：`apps/desktop/src/browser-guests.ts` 将 Electron 的 “An object could not be cloned.” 拒绝映射为 `result/not-json`（此前无 code，落到 `workbench/handler-failed` → `workbench/protocol`）；`apps/desktop/tests/browser-guests.spec.ts` 新增用例，18/18 PASS。
+- 待查：首个 app 实例里已存在的直播中控 webview `attach` 返回 `target/not-found`；同一 URL 在新标签打开后 `attach` 成功。重启后该标签未自动恢复，未能复现，需专门验证“恢复标签是否带 broker lease”。
+- 现场：验证用的是 example.com；结束后已把该标签导航回直播中控 URL。
+
 ## 下一步（W1 之后）
 
 1. **真实 broker 深验**：启动已通、通道已连；还需在桌面进程用工具调用真实执行 attach/evaluate/detach，并验证窗口/登录持久化与异常恢复。

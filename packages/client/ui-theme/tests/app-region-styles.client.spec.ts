@@ -22,8 +22,11 @@ import { packageFiles, packageStylesheets, parseRules, type CssRule } from './st
 /** The one stylesheet allowed to declare a darwin window drag region, relative to packages/. */
 const SHELL_SHEET = 'client/web/src/base.css'
 
-/** The mark that stylesheet's rule selects, as authored. */
+/** The mark that stylesheet's base rule selects, as authored. */
 const SHELL_DRAG_SELECTOR = "html[data-platform='darwin'] [data-window-drag]"
+
+/** The rule restoring marked rows inside a fullscreen covering surface. */
+const SHELL_SURFACE_SELECTOR = "html[data-platform='darwin'] [data-window-drag-suppressed] [data-window-drag-surface] [data-window-drag]"
 
 /** The frame's Windows caption row, relative to packages/; the other platform's chrome. */
 const WINDOWS_CAPTION = 'client/ui-layout/src/client/AppFrame.module.css'
@@ -240,12 +243,13 @@ describe('window drag-region ownership', () => {
 
   it('declares the window drag surface in exactly two places', () => {
     // Rows mark themselves instead of each sheet declaring its own drag, so the
-    // tree holds one darwin rule — the mark rule in the shell sheet — plus the
-    // Windows caption row, which is that platform's own chrome. A third
-    // declaration, a per-sheet row rule, or a darwin band on the frame fails here.
+    // tree holds the mark rule in the shell sheet plus the one rule restoring
+    // marked rows inside a covering surface, and the Windows caption row, which
+    // is that platform's own chrome. A per-sheet row rule or a darwin band on
+    // the frame fails here.
     expect(dragOwners()).toEqual([
       { file: WINDOWS_CAPTION, selectors: [WINDOWS_CAPTION_SELECTOR] },
-      { file: SHELL_SHEET, selectors: [SHELL_DRAG_SELECTOR] },
+      { file: SHELL_SHEET, selectors: [SHELL_DRAG_SELECTOR, SHELL_SURFACE_SELECTOR] },
     ])
   })
 

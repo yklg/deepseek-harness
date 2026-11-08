@@ -334,6 +334,7 @@ function SidebarPanel(panel: PanelProps & { width: number; panelRef: RefObject<H
         '--dsh-sidebar-width': fullscreen ? '100vw' : `${width}px` } as CSSProperties}
       data-sidebar-right-session={sessionId}
       data-sidebar-right-panel={fullscreen ? 'fullscreen' : 'push'}
+      data-window-drag-surface={fullscreen || undefined}
       data-sidebar-right-open={expanded || undefined}
       // Dockkit hides individual docked hosts; floating descendants remain accessible.
       aria-hidden={(!expanded && surface.layout.floats.length === 0) || undefined}

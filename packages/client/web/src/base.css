@@ -68,6 +68,21 @@ html[data-platform='darwin'] [data-window-drag-recall] {
   -webkit-app-region: no-drag;
 }
 
+/* A foreground surface that covers the shell's chrome rows (the fullscreen
+   right panel) still loses the native composition: a covered row later in the
+   document declares drag over the surface's controls. The frame marks itself
+   suppressed while such a surface is up, which drops every covered row's drag
+   box, and the surface marks its own subtree so its chrome rows keep declaring
+   drag. `initial` removes the box instead of leaving a subtractive `no-drag`
+   one, so the surface's drag row is the last collected box. */
+html[data-platform='darwin'] [data-window-drag-suppressed] [data-window-drag] {
+  -webkit-app-region: initial;
+}
+
+html[data-platform='darwin'] [data-window-drag-suppressed] [data-window-drag-surface] [data-window-drag] {
+  -webkit-app-region: drag;
+}
+
 html[data-platform='darwin'] body > :not(#root) {
   -webkit-app-region: no-drag;
 }

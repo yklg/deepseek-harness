@@ -13,7 +13,7 @@ macOS 桌面窗口的可拖区域被写了两遍。布局决定 chrome 行在哪
 覆盖变成由四部分组成的、可执行的契约：
 
 1. ui-web 的 `window-drag/regions.ts` 把合成规则发布成可执行模型——当包含某点的最后一个 app-region 盒声明 `drag` 时该点可拖，这正是原生窗口施加的"按 DOM 顺序的几何合成"——并发布 `INTERACTIVE_SELECTOR`，作为 ui-web base.css 交互减除的唯一来源。base-styles spec 断言样式表声明的正是该列表，两者无法漂移。
-2. 外壳只声明一次 darwin 拖拽面：ui-web base.css 里的 `html[data-platform='darwin'] [data-window-drag]`。每个 chrome 行在 markup 里给自己的元素打标，于是该行自己的盒子就是窗口的可拖几何，不需要任何固定 band 去匹配行高。ui-theme 的 app-region 门禁持有一份清单，把每行的 markup 标记与其样式表、类选择器和写死的高度配成一条，并拒绝清单未点名的元素上的标记——行不再打标、新增未打标的行、把标记打在内容容器上，都会在同一条门禁上失败。
+2. 外壳通过 markup 标记声明 darwin 拖拽面：ui-web base.css 里的 `html[data-platform='darwin'] [data-window-drag]`。每个 chrome 行在 markup 里给自己的元素打标，于是该行自己的盒子就是窗口的可拖几何，不需要任何固定 band 去匹配行高。覆盖窗口的 surface（全屏右栏）把自己标记为 `data-window-drag-surface`，框架则标记自己为 `data-window-drag-suppressed`；第二条外壳规则丢弃被覆盖行的盒子并恢复 surface 内被打标的行，这样文档顺序更靠后的被覆盖行不再能把 surface 的控件变成窗口拖拽，而面板 strip 仍可拖。ui-theme 的 app-region 门禁持有一份清单，把每行的 markup 标记与其样式表、类选择器和写死的高度配成一条，并拒绝清单未点名的元素上的标记——行不再打标、新增未打标的行、把标记打在内容容器上，都会在同一条门禁上失败。
 3. 浏览器车道增加 `window-drag-coverage`：以 `data-platform='darwin'` 在 Chromium 里启动真实组合，用模型断言没有任何交互盒落在拖拽面内，并对各 chrome 行逐一探测，另加一个"页头行打标、其可滚动正文保持内容"的页面。
 4. 外壳持有唯一那个重收集 watcher——ui-web 的 `window-drag/recall.ts`，由引导内核安装。在表面可能移动期间，它每帧测量每个被打标的行，凡该帧几何发生变化就在 body 上打 `data-window-drag-recall`；几何在一段很短的宽限窗口内保持不动之后才清掉，这样在 CSS transition 真正移动任何东西之前到达的一次报告，不会在它第一帧未测到变化时就终止循环。它会报告表面可能移动的每一种原因：触及被打标行或承载它的容器的 DOM 变化、被打标行的盒子尺寸变化，以及持有被打标行的元素上开始的 transition 或 animation。任何 chrome 行都不再自带脉冲。
 
@@ -33,7 +33,7 @@ macOS 桌面窗口的可拖区域被写了两遍。布局决定 chrome 行在哪
 
 - 新控件不需要任何 drag 声明：交互选择器会减除它。新 chrome 行只需给元素打上 `data-window-drag` 并在清单里加一条钉住高度，无需 band 算术，也不牵动其它样式表。
 - 行自己的盒子就是完整的可拖几何，内容容器永远不是。插件管理的详情视图给它们共用的页头行打标，而不是给它所在的详情容器打标：标记容器会让窗口在它的正文与表单 label 上拖动；车道会采样该页头下方的正文来守住这一点。
-- 不再有任何缺口：每个 chrome 行自持其拖拽段，门禁断言整个包树只在两处声明拖拽面——外壳的标记规则与 Windows 标题栏行。插件管理页头与其详情视图共用的页头行都把 48px 避让量包含在行内，入口页那条缺口也随之关闭。
+- 不再有任何缺口：每个 chrome 行自持其拖拽段，门禁断言整个包树只在两处声明拖拽面——外壳样式表的标记与 surface 恢复规则、Windows 标题栏行。插件管理页头与其详情视图共用的页头行都把 48px 避让量包含在行内，入口页那条缺口也随之关闭。
 - settings 浮层现在与 Modal primitive 一样 portal 到 `#root` 之外，并删掉了它自己那条 no-drag：挂在 root 内的覆盖层先于各列 chrome，后声明的 drag 行会盖掉它的减除；portal 之后由 ui-web base.css 的 `body > :not(#root)` 规则在它与 drag 行重叠处减除。车道在浮层打开时会断言这个归属。由于 onboarding 步骤的浮层只把 `#root` 置为 inert，onboarding 步骤挂载时面板会自行关闭，而不是留在它背后仍可聚焦。
 - Platform overlay 的返回栏只是 darwin 的 drag 行。它原先那条按表声明的 `app-region: drag` 没有任何平台限定，因此 Windows 上也能从这条 48px 栏拖动窗口；改到唯一那条带作用域的规则之后，该栏只在 macOS 上声明 drag，在那里它就是窗口顶条。Windows 保留原生标题栏行作为拖拽面，且外壳没有 Linux 桌面目标。人工状态矩阵会为这条栏增加一格。
 - 跨越隐藏/显示边界滑动的行不能只靠布局变化：只有当计算出的 app-region 值变化时，Electron 才会重新收集窗口的拖拽矩形（electron#32341），而 Blink 收集时会跳过隐藏的盒子。watcher 一次性把这个缺口对所有行补上——它在"触及被打标行的 DOM 变化"或"被打标行的盒子尺寸变化"时重新启动，随后在盒子仍在移动的每一帧发脉冲——因此右栏不再自带任何脉冲。
@@ -41,11 +41,11 @@ macOS 桌面窗口的可拖区域被写了两遍。布局决定 chrome 行在哪
 ## Testing
 
 - `packages/client/web/tests/window-drag-regions.client.spec.ts` —— 合成规则，含顺序敏感与盒子边界。
-- `packages/client/web/tests/base-styles.client.spec.ts` —— base.css 声明的正是模型的交互选择器、唯一那条 darwin drag 规则，以及 recall 标记的减除。
+- `packages/client/web/tests/base-styles.client.spec.ts` —— base.css 声明的正是模型的交互选择器、darwin drag 规则、被覆盖行的抑制，以及 recall 标记的减除。
 - `packages/client/ui-theme/tests/app-region-styles.client.spec.ts` —— 拖拽所有权、行清单与每行的标记；清单之外的标记或行高变化即失败。
 - `packages/client/ui-dockkit/tests/app-region-styles.client.spec.ts` —— strip 行自己的减除；它的 drag 属于 markup 标记，因此样式表一条都不声明。
 - `packages/client/web/tests/window-drag-recall.client.spec.ts` —— 通过两个 seam 驱动 watcher：什么会重新启动它、什么被它忽略、收敛循环、外壳默认值，以及销毁。
-- `apps/web/tests/window-drag-coverage.e2e.ts` —— 真 Chromium：无控件被吞、逐行探测、一个页头行可拖而正文不可拖的详情页，以及右栏滑动期间外壳发出的 recall 脉冲。
+- `apps/web/tests/window-drag-coverage.e2e.ts` —— 真 Chromium：无控件被吞、逐行探测、一个页头行可拖而正文不可拖的详情页、全屏右栏的被覆盖行退出组合而其 strip 保持可拖，以及右栏滑动期间外壳发出的 recall 脉冲。
 - 真机验收（2026-09-20，双平台，HID 级指针输入 + 窗口矩形读数）：上面的 macOS 矩阵在真实 `hiddenInset` 窗口上跑过，Windows 各格在 Windows 11 ARM64 虚拟机上跑过——chrome 行可拖、正文与覆盖浮层不可拖、控件保留点击、右栏 strip 行在滑入后可拖。
 
 ## Manual state matrix

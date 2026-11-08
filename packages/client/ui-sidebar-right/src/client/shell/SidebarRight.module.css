@@ -82,11 +82,12 @@
   z-index: 40;
 }
 
-/* No whole-box subtraction here: Electron drag regions are window geometry,
-   not stacking, so a strip row inside this fullscreen content that marks itself
-   `data-window-drag` (ui-dockkit) still owns the drag over its own box, and
-   ui-web base.css subtracts interactive elements and portalled overlays. A
-   panel-wide no-drag would trade that drag affordance away. */
+/* The panel does not subtract its whole box: Electron drag regions are window
+   geometry, not stacking, so a covered chrome row later in the document would
+   still own its box and turn these controls into window drag. The frame reports
+   fullscreen as drag-suppressed (ui-layout) and the panel marks itself the
+   surface, so ui-web base.css drops the covered rows and lets the marked rows
+   inside the panel keep their drag geometry. */
 
 /* Windows keeps caption controls above fullscreen file and terminal panels. */
 :global([data-windows-titlebar]) .panel[data-sidebar-right-panel='fullscreen'] {

@@ -529,6 +529,15 @@ describe('AppFrame right panel presentation', () => {
     }
   })
 
+  it('suppresses covered drag rows while the rightbar is fullscreen', () => {
+    const { frame, instance } = mountFrame()
+    expect(frame.dataset.windowDragSuppressed).toBeUndefined()
+    act(() => { instance.actions.openRightbar(true, true) })
+    expect(frame.dataset.windowDragSuppressed).toBe('true')
+    act(() => { instance.actions.openRightbar(true, false) })
+    expect(frame.dataset.windowDragSuppressed).toBeUndefined()
+  })
+
   it('keeps fullscreen suppression independent from resetting the instant marker', () => {
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openRightbar(true, true) })

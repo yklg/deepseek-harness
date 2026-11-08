@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { INTERACTIVE_SELECTOR } from '../src/window-drag/regions.ts'
+import { DRAG_MARK, INTERACTIVE_SELECTOR, SUPPRESS_MARK, SURFACE_MARK } from '../src/window-drag/regions.ts'
 
 const THEME_PACKAGE = '@deepseek-ai/dsh-client-ui-theme'
 const baseCss = readFileSync(fileURLToPath(new URL('../src/base.css', import.meta.url)), 'utf8')
@@ -67,6 +67,19 @@ describe('web shell base.css', () => {
     // Electron collects without changing the composed surface.
     expect(normalizedCss).toContain(
       "html[data-platform='darwin'] [data-window-drag-recall] { -webkit-app-region: no-drag; }",
+    )
+  })
+
+  it('drops covered rows under a suppressed frame and restores marked rows inside its surface', () => {
+    // A fullscreen surface covers the frame's chrome rows; without suppression a
+    // covered row later in the document still drags the window over the
+    // surface's controls. The covered rows lose their boxes, and the surface's
+    // own marked rows keep the drag affordance.
+    expect(normalizedCss).toContain(
+      `html[data-platform='darwin'] [${SUPPRESS_MARK}] [${DRAG_MARK}] { -webkit-app-region: initial; }`,
+    )
+    expect(normalizedCss).toContain(
+      `html[data-platform='darwin'] [${SUPPRESS_MARK}] [${SURFACE_MARK}] [${DRAG_MARK}] { -webkit-app-region: drag; }`,
     )
   })
 

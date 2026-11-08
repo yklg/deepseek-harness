@@ -48,6 +48,21 @@ export const DRAG_MARK = 'data-window-drag'
 export const RECALL_MARK = 'data-window-drag-recall'
 
 /**
+ * The attribute a frame sets while a foreground surface covers its chrome rows.
+ * ui-web `base.css` drops the marked drag boxes of that subtree, so a covered
+ * row later in document order cannot win the composition over the surface's own
+ * rows. The mark only changes drag geometry; content stays clickable.
+ */
+export const SUPPRESS_MARK = 'data-window-drag-suppressed'
+
+/**
+ * The attribute a covering surface sets on its own root. Marked drag rows inside
+ * it keep the shell drag rule, restoring the window drag affordance over the
+ * surface without making its content a drag target.
+ */
+export const SURFACE_MARK = 'data-window-drag-surface'
+
+/**
  * The interactive-element selector that subtracts a control from any drag row it
  * overlaps. ui-web `base.css` declares it for the darwin platform; this constant
  * is the single source both that sheet and its contract spec compare against, so

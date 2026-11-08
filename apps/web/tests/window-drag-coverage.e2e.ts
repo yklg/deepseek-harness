@@ -21,7 +21,7 @@ import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { initialShortcutConfig } from '@deepseek-ai/dsh-client-shortcuts/protocol'
 import {
-  INTERACTIVE_SELECTOR, RECALL_MARK, isDraggableAt, type RegionRect,
+  INTERACTIVE_SELECTOR, RECALL_MARK, SUPPRESS_MARK, isDraggableAt, type RegionRect,
 } from '@deepseek-ai/dsh-client-web/src/window-drag/regions.ts'
 import { launchWebScaffold, watchConsole, type WebScaffold } from './scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
@@ -364,11 +364,13 @@ describe('web e2e: macOS window drag coverage', () => {
       const pulsing = firstRecallPulse(page)
       await page.locator('[data-sidebar-right-expand]').click()
       await page.locator('[data-sidebar-right-panel][data-sidebar-right-open]').waitFor({ timeout: 15_000 })
-      // The panel slides in from the frame's right edge; probing before the slide
+      // The panel slides in inside the rail track, so its own right edge settles
+      // at the track's right edge — not at the window's. Probing before the slide
       // settles measures the hidden position, where the band does not reach.
       await expect.poll(async () => page.locator('[data-sidebar-right-panel]').evaluate((element) => {
         const rect = element.getBoundingClientRect()
-        return Math.round(innerWidth - rect.right) === 0
+        const column = element.closest('[data-rightbar-col]')?.getBoundingClientRect()
+        return column !== undefined && Math.round(rect.right) === Math.round(column.right)
           && element.getAnimations({ subtree: true })
             .every(animation => animation.playState === 'finished' || animation.playState === 'idle')
       }), { timeout: 15_000 }).toBe(true)
@@ -463,6 +465,34 @@ describe('web e2e: macOS window drag coverage', () => {
       // reach the page instead of dragging the window.
       expect(swallowedBoxes(regions), 'interactive boxes inside the drag surface').toEqual([])
 
+      // Fullscreen covers the frame's chrome rows; those rows must leave the
+      // composition, or a press on the panel's controls drags the window. The
+      // panel's own strip keeps its drag geometry.
+      const panelControl = page.locator('[data-sidebar-right-panel]')
+      const frame = page.locator('[class*="frame"]').first()
+      await page.locator('[data-sidebar-right-mode="fullscreen"]').click()
+      await expect.poll(() => panelControl.getAttribute('data-sidebar-right-panel')).toBe('fullscreen')
+      await settled(page)
+      expect(await frame.getAttribute(SUPPRESS_MARK), 'the frame reports the covered chrome').toBe('true')
+      const fullscreenRegions = await collectedRegions(page, INTERACTIVE_SELECTOR)
+      const fullscreenStrip = await rectOf(page, '[data-dockkit-strip]')
+      const mode = await rectOf(page, '[data-sidebar-right-mode="push"]')
+      const collapse = await rectOf(page, '[data-sidebar-right-toggle]')
+      expect(isDraggableAt(fullscreenRegions, fullscreenStrip.x + fullscreenStrip.width / 2,
+        fullscreenStrip.y + 4), 'the fullscreen strip row').toBe(true)
+      expect(isDraggableAt(fullscreenRegions, mode.x + mode.width / 2, mode.y + mode.height / 2),
+        'the exit-fullscreen control').toBe(false)
+      expect(isDraggableAt(fullscreenRegions, collapse.x + collapse.width / 2,
+        collapse.y + collapse.height / 2), 'the collapse control').toBe(false)
+      // The header's top run is the panel strip's own box now; sample below the
+      // strip, where only the covered header would supply drag geometry.
+      expect(isDraggableAt(fullscreenRegions, header.x + header.width / 2, header.y + header.height - 4),
+        'the covered conversation header').toBe(false)
+      expect(swallowedBoxes(fullscreenRegions), 'interactive boxes inside the fullscreen drag surface').toEqual([])
+      await page.locator('[data-sidebar-right-mode="push"]').click()
+      await expect.poll(() => panelControl.getAttribute('data-sidebar-right-panel')).toBe('push')
+      expect(await frame.getAttribute(SUPPRESS_MARK)).toBeNull()
+
       expect(tripwire.pageErrors).toEqual([])
     } catch (error) {
       await saveFailureShot(page, 'window-drag-coverage')
@@ -477,6 +507,10 @@ describe('web e2e: macOS window drag coverage', () => {
     try {
       await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click()
       await page.locator('[data-shell-leading]').waitFor({ state: 'visible', timeout: 15_000 })
+      // `settled` can run before the click's state update has flushed, and a
+      // header still at its expanded x would be measured against the old column.
+      await expect.poll(() => rectOf(page, '[data-slot="conversation.header"] > header')
+        .then(header => Math.round(header.x))).toBe(0)
       await settled(page)
       const regions = await collectedRegions(page, INTERACTIVE_SELECTOR)
       const header = await rectOf(page, '[data-slot="conversation.header"] > header')

@@ -304,6 +304,7 @@ export function AppFrame({
       data-sidebar-instant={drawer && sidebarCollapsed && sidebarTransition.instant || undefined}
       data-rightbar-collapsed={cols.rightbar === 0 || undefined}
       data-rightbar-fullscreen={layoutInfo.rightbarFullscreen || undefined}
+      data-window-drag-suppressed={layoutInfo.rightbarFullscreen || undefined}
       data-rightbar-instant={layoutInfo.rightbarInstant || undefined}
       data-dragging={dragging || undefined}
       data-animating={animateTracks || undefined}

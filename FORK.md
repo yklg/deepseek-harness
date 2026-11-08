@@ -37,5 +37,7 @@
 - [x] 右栏镜像（ui-sidebar-right）：push 面板贴轨道左缘（left:0，width 100%）、移除横向 slide（轨道动画驱动）、全屏改 position:fixed 贴视口右缘；CSS 契约/seat/README 已更新。注意 apps/web/tests/sidebar-right.e2e.ts 仍按旧 slide 断言，W4 随 test:web 快照一起更新
 - [x] Desktop broker / persist 分区（`persist:dsh-sidebar-browser-<sha256>`）/ clearStorage / Host↔Main workbench 协议（新增 `result/too-large` 错误码）；bridge 类型已补 `clearStorage`。未做：Host 侧客户端消费、真实 Electron 行为验证
 - [x] profile 迁移：product bundle 常量 + `createPluginProfile`/`ensureProfileBundles`（幂等/保留自定义/损坏 fail loud）+ `disableAllPlugins` 恢复列表保留产品 bundle；`apps/cli` 依赖声明产品 bundle
-- [ ] ecom 包骨架 + bundle
+- [x] ecom 包骨架 + bundle：`packages/ecom/{workbench-server,client-ui-workbench,bundle-workbench}`（8 语言 locale、README 三件套、Host Config 六组占位、launcher 面板 + live-console tab 占位）；`tsconfig.host/client` 聚合 + `tsconfig.base.json` 手写别名；`docs/config-catalog` 重新生成。
+  - 注：三包为通过 `check-workspace-constraints` 的 release-member 规则，声明 `publishConfig.access=public` + repository（不加 private）；产品发布链路不在本 fork 范围。
+  - 注：desktop broker 的 Host 操作名为 `automation/attach|eval|detach|targets`，结果超限错误码 `result/too-large`（计划 v6 只列 `result/not-json`，以实现为准）。
 - [ ] dev:desktop 手验

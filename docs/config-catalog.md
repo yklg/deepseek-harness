@@ -894,6 +894,67 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-deepseek-account-platform -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-ecom-workbench-server -->
+<a id="deepseek-aidsh-ecom-workbench-server"></a>
+
+## `@deepseek-ai/dsh-ecom-workbench-server`
+
+- `source`: [`packages/ecom/workbench-server/src/index.ts:21`](../packages/ecom/workbench-server/src/index.ts)
+
+```ts config-catalog
+/**
+ * Workbench configuration grouped by the capability that will consume it.
+ * Every group is optional at the row; the resolved groups exist because each
+ * nested field has a default, so a row may enable a capability with no further
+ * configuration.
+ */
+export interface Config {
+  /** Yunying operations-platform connection. */
+  yunying: {
+    /** Base URL of the operations platform; an empty value leaves the capability unconfigured. */
+    endpoint: string
+    /** Operations-platform workspace whose records the workbench reads. */
+    workspaceId: string
+  }
+  /** Embedded browser automation. */
+  browser: {
+    /** Whether the workbench may drive the product browser guest. */
+    enabled: boolean
+    /** Whether browser automation runs without showing its window. */
+    headless: boolean
+  }
+  /** Automation scheduling defaults. */
+  automation: {
+    /** Maximum concurrently running workbench automations. */
+    maxConcurrentRuns: number
+    /** Default per-run timeout in seconds. */
+    defaultTimeoutSeconds: number
+  }
+  /** AI assistance used by workbench features. */
+  ai: {
+    /** Model id the workbench assistants request; an empty value uses the profile default. */
+    model: string
+    /** Sampling temperature for workbench assistant requests. */
+    temperature: number
+  }
+  /** Policy gates applied to every workbench action. */
+  policy: {
+    /** Whether actions require explicit user approval before they run. */
+    requireApproval: boolean
+    /** Host allowlist for actions that reach the network; empty means no allowlist item. */
+    allowedHosts: string[]
+  }
+  /** Workbench record storage. */
+  storage: {
+    /** Directory holding workbench records; an empty value uses the profile home. */
+    root: string
+    /** Retention period for stored workbench records, in days. */
+    retentionDays: number
+  }
+}
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-ecom-workbench-server -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-api-speech-to-text -->
 <a id="deepseek-aidsh-experimental-api-speech-to-text"></a>
 
@@ -4956,6 +5017,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 | `@deepseek-ai/dsh-client-ui-subagent` | — | [`packages/client/ui-subagent/src/index.ts`](../packages/client/ui-subagent/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-tool` | — | [`packages/client/ui-tool/src/index.ts`](../packages/client/ui-tool/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-user-questions` | — | [`packages/client/ui-user-questions/src/index.ts`](../packages/client/ui-user-questions/src/index.ts) |
+| `@deepseek-ai/dsh-client-ui-workbench` | — | [`packages/ecom/client-ui-workbench/src/index.ts`](../packages/ecom/client-ui-workbench/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-workflow-run` | — | [`packages/client/ui-workflow-run/src/index.ts`](../packages/client/ui-workflow-run/src/index.ts) |
 | `@deepseek-ai/dsh-client-ui-workspace` | — | [`packages/client/ui-workspace/src/index.ts`](../packages/client/ui-workspace/src/index.ts) |
 | `@deepseek-ai/dsh-command-compact` | `commands` · `compaction` | [`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts) |
@@ -5051,6 +5113,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 | `@deepseek-ai/dsh-atomic-write` | — | [`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts) |
 | `@deepseek-ai/dsh-base` | — | [`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts) |
 | `@deepseek-ai/dsh-brand` | — | [`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts) |
+| `@deepseek-ai/dsh-bundle-ecom-workbench` | — | [`packages/ecom/bundle-workbench/src/index.ts`](../packages/ecom/bundle-workbench/src/index.ts) |
 | `@deepseek-ai/dsh-chunked-list` | — | [`packages/util/chunked-list/src/index.ts`](../packages/util/chunked-list/src/index.ts) |
 | `@deepseek-ai/dsh-client-store` | — | [`packages/client/store/src/index.ts`](../packages/client/store/src/index.ts) |
 | `@deepseek-ai/dsh-client-test-runtime` | — | [`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts) |

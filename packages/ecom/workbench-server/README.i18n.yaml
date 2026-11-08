@@ -1,0 +1,46 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/ecom/workbench-server/README.md
+/:
+  en: 4a9695e85cf79d20
+  zh: 2f04f165aa3547f8
+/deepseek-ai-dsh-ecom-workbench-server:
+  en: 068439bc3bbc3cde
+  zh: 83565f9ce7d86848
+/deepseek-ai-dsh-ecom-workbench-server/summary:
+  en: 28e45af0ae650ab8
+  zh: ff6e60182f4600d4
+/deepseek-ai-dsh-ecom-workbench-server/table-of-contents:
+  en: b563e4ec4727d0de
+  zh: d0228da978238e05
+/deepseek-ai-dsh-ecom-workbench-server/use-this-package:
+  en: 031401323d3ff58f
+  zh: 8c1fc6f2cf8c9e87
+/deepseek-ai-dsh-ecom-workbench-server/understand-the-implementation:
+  en: 24c4d4962bce8844
+  zh: f4689df0ad8ba6d2
+/deepseek-ai-dsh-ecom-workbench-server/further-exploration:
+  en: 25211044f68bedb7
+  zh: dba88f46e6479658
+/deepseek-ai-dsh-ecom-workbench-server/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration:
+  en: 09af43ae19cbf11e
+  zh: bfb5c349f5a2cc63
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/what-the-model-sees:
+  en: d269f982f6c378ab
+  zh: 387072c4f6e64e61
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/token-effect:
+  en: b4de7a7d1902a50c
+  zh: 16153100afc7e017
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/kv-cache-effect:
+  en: 162a5e4865d11114
+  zh: f3740b85e1c7d9e9
+/deepseek-ai-dsh-ecom-workbench-server/known-limitations-and-deferred-work:
+  en: c885ef6d62e6df2e
+  zh: 1673dcdff47dd480
+/deepseek-ai-dsh-ecom-workbench-server/known-limitations-and-deferred-work/dev-note:
+  en: 0a1253c6f7b5e8b9
+  zh: 9f56528562c7c914

@@ -32,9 +32,9 @@
 ## 当前进度
 
 - [x] 源码基线提交 + `product/ecom-workbench` 分支
-- [ ] 布局互换（ui-layout）
-- [ ] 右栏镜像（ui-sidebar-right）
-- [ ] 列宽持久化
+- [x] 布局互换（ui-layout）：列序 sidebar | browser rail | conversation，`BROWSER_MIN=420`、`CHAT_MIN=400`，手柄位置/方向，Windows 圆角归属（afb75c83）
+- [x] 列宽持久化：`createLayoutStore({ storage })` + `dsh.layout.rightbar`（afb75c83，测试含写读同 key/损坏复位/写失败降级）
+- [ ] 右栏镜像（ui-sidebar-right）——进行中
 - [ ] Desktop broker / persist 分区 / clearStorage
 - [ ] profile 迁移
 - [ ] ecom 包骨架 + bundle

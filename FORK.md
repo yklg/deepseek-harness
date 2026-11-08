@@ -27,7 +27,9 @@
 - Node：`/usr/local/bin/node` v24.18.0（原生 addon 需要开发头文件；`.dsh-bin/env.sh` 固定该 Node 与 pnpm）。
 - 安装：`source .dsh-bin/env.sh && pnpm install --frozen-lockfile`
 - 产物：`pnpm run build:artifacts`
-- 桌面开发：`pnpm run dev:desktop`（隔离 home：`apps/desktop/.desktop-build/development/home`）
+- 桌面开发：`pnpm run dev:desktop`（隔离 home：`apps/desktop/.desktop-build/development/home`）；只改源码用 `pnpm run start:desktop` 跳过构建。
+- primary runtime 缓存：`apps/desktop/.desktop-build/downloads/<sha256>`；本机已缓存 Node 与 Python 归档（Python sha256 `81a359f1cfadd4da11766534c5913791cea55f26e1bb902cacd2a531bb1e4b2b`），wheel 从 `files.pythonhosted.org` 拉取。
+- Electron 缓存：`electron_config_cache=$repo/.electron-cache`；缓存键按 npmmirror URL 生成，重装/补 Electron 时带 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`，否则会回源 GitHub。
 - Windows 未签名包：在 Windows x64 机器执行 `pnpm run package:desktop:win:x64:unsigned`（需 `.env.windows`，含 appId 与 mandatory-update HTTPS origin）。
 
 ## 当前进度
@@ -41,7 +43,7 @@
 - [x] ecom 包骨架 + bundle：`packages/ecom/{workbench-server,client-ui-workbench,bundle-workbench}`（8 语言 locale、README 三件套、Host Config 六组占位、launcher 面板 + live-console tab 占位）；`tsconfig.host/client` 聚合 + `tsconfig.base.json` 手写别名；`docs/config-catalog` 重新生成。
   - 注：三包为通过 `check-workspace-constraints` 的 release-member 规则，声明 `publishConfig.access=public` + repository（不加 private）；产品发布链路不在本 fork 范围。
   - 注：desktop broker 的 Host 操作名为 `automation/attach|eval|detach|targets`，结果超限错误码 `result/too-large`（计划 v6 只列 `result/not-json`，以实现为准）。
-- [ ] dev:desktop 手验（环境阻塞：`dev.ts` 需要 primary runtime 的 Python 归档，GitHub release assets 在当前网络不可达/超时，镜像 500/403；Electron 二进制已装好。属网络限制，非代码缺陷；在有可用网络的机器上执行 `pnpm run dev:desktop` 即可完成）
+- [x] dev:desktop 手验（2026-11-08）：Python 归档按 SHA 放入 `.desktop-build/downloads/` 后，`pnpm run start:desktop` 成功拉起 `Harness Dev.app`；runtime Office 冒烟通过，desktop profile 含产品 bundle，用户实机确认 Ecom workbench 与 live console 正常。Electron 安装器缓存键对应 npmmirror，重装时需带 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/`。
 - [x] 运行时加载验证（web profile，临时 DSH_HOME）：bundle 两行成功加载，`@deepseek-ai/dsh-client-ui-workbench` 出现在 boot 清单并可取回 client bundle（200）；ego-browser 真实 DOM 验证：侧栏出现「电商工作台」入口，点击后 launcher 面板渲染占位文案（2026-11-08）。
 - [x] W1-1 Host workbench 客户端：`channel.ts` 消费 Electron 私有通道（以 `ELECTRON_RUN_AS_NODE=1` 识别真正的 Host，测试进程不误判），`automation.ts` 封装 `attach|evaluate|detach|targets`（部署 origin 白名单、单 target 串行、错误码映射、断连/超时降级），`workbench` Remote 暴露状态、目标、评估与事件流。
 - [x] W1-2 launcher + live-console 接线：launcher 显示自动化/云营/目标状态与快捷入口，live-console 订阅 Host 事件流（100 ms 节流、错误态、空态、重连）；快捷入口先回到已选会话（无已选时取最近更新会话）再打开标签页；8 语言文案；DOM 单测。
@@ -56,7 +58,7 @@
 - `pnpm run test:gui`：745 files / 13107 passed / 1 skipped（首次失败为 `.dsh-bin/env.sh` 误导出 `DSH_CLIENT_COMMIT_HASH` 污染 fixture；已移除该导出并复跑全绿）。
 - 定向测试：ui-layout 142、ui-sidebar-right 323、apps/desktop broker 115、profile 迁移 5、ecom smoke 4、ui-sidebar-browser 68，全部通过。
 - 运行时加载 + DOM：临时 `DSH_HOME` 的 web profile 中加入产品 bundle 后，boot 清单含 `@deepseek-ai/dsh-client-ui-workbench/client.js`（HTTP 200），ego-browser 真实页面侧栏出现「电商工作台」，点击后 launcher 占位页渲染。
-- 未完成：`dev:desktop` 实机启动（网络无法获取 primary runtime 的 Python 归档；Electron 二进制已装）。`apps/web` e2e 已在 W1 完成（见下）。
+- 未完成：`dev:desktop` 实机启动（W1 后已由人工补入 Python 归档并完成，见下）；`apps/web` e2e 已在 W1 完成（见下）。
 
 ## W1 验证记录（2026-11-08）
 
@@ -64,11 +66,12 @@
 - 定向单测：`packages/ecom` 8 个文件 / 68 tests PASS（channel 13、automation 13、yunying 11、tools 7、smoke 4、client source 7、page 7、console 6）。
 - 文档门禁：`pnpm run test:docs` 21/21 gates PASS（含 markdown links、translation pairing、repository references、model experience、doc-standard）；`gen-config-catalog --check` up to date；`verify-client-ui-i18n` PASS；`verify-client-packages` / `verify-package-dependencies` PASS。
 - 定向 lint：oxlint 对 `packages/ecom` 与两个 e2e 文件 0 problem。
+- Electron 实机（2026-11-08）：`pnpm run start:desktop` 拉起 `Harness Dev.app`，Host 子进程加载 desktop profile（base + web-app + ecom-workbench）并监听 127.0.0.1:64476；runtime Office 冒烟通过；用户确认 Ecom workbench 状态与 live console 正常。
 - Web e2e（keyless 组装浏览器）：`apps/web/tests/ecom-workbench.e2e.ts` + `apps/web/tests/sidebar-right.e2e.ts`，23/23 tests PASS。ecom 用例证明侧栏入口、Host `workbench` Remote、云营未配置态、live-console 事件流与 web profile 的「自动化不可用」降级全链路可达。本机 Playwright 1.61.1 需要的 Chromium 1228 下载在 0% 卡住，改用缓存 Chromium 1243（临时 `PLAYWRIGHT_BROWSERS_PATH` 符号链接）执行；CI 使用自身固定浏览器。
 
 ## 下一步（W1 之后）
 
-1. **Electron 实机**：`dev:desktop` 需要 primary runtime 的 Python 归档（当前网络不可达；Electron 二进制已装）；网络可用后在桌面进程验证私有通道、真实 broker 行为与窗口/登录持久化。
+1. **真实 broker 深验**：启动已通、通道已连；还需在桌面进程用工具调用真实执行 attach/evaluate/detach，并验证窗口/登录持久化与异常恢复。
 2. **高风险写执行器**：发送、改价、上下架、库存需要云营写 API；审批策略已接入，执行器落地时复用 `ecom_*` 工具名。
 3. **其余 web 快照/全量 GUI**：`test:web` 全量与 `test:gui` 交给 CI；本机已跑受影响的两个 e2e 与 ecom 定向单测。
 4. **产品打包/品牌**：按「补丁面」表继续维护桌面打包、图标与 Windows 未签名包。

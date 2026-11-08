@@ -75,7 +75,7 @@
 - 单 target 串行：并发两次 evaluate（首个脚本延时 300ms），guest 内顺序为 `["first","second"]`，总耗时 312ms。
 - 错误码：missing target → `target/not-found`；脚本返回函数 → `result/not-json`；detach 后 evaluate → `target/not-found`；`targets` → `[]`。
 - 修复：`apps/desktop/src/browser-guests.ts` 将 Electron 的 “An object could not be cloned.” 拒绝映射为 `result/not-json`（此前无 code，落到 `workbench/handler-failed` → `workbench/protocol`）；`apps/desktop/tests/browser-guests.spec.ts` 新增用例，18/18 PASS。
-- 待查：首个 app 实例里已存在的直播中控 webview `attach` 返回 `target/not-found`；同一 URL 在新标签打开后 `attach` 成功。重启后该标签未自动恢复，未能复现，需专门验证“恢复标签是否带 broker lease”。
+- 恢复标签复验（2026-11-08，优雅关闭后重启）：浏览器标签恢复了直播中控地址且 lease 已存在；页面尚未加载时 `attach` 即成功，点“前往”加载后仍是同一 targetId，`evaluate document.title` → `"直播中控台"`，`targets` 列出该 target，`detach` 正常。首个实例的 `target/not-found` 未再复现，更像会话/面板切换期间的瞬时释放，不再按 lease 缺口跟踪。
 - 现场：验证用的是 example.com；结束后已把该标签导航回直播中控 URL。
 
 ## 下一步（W1 之后）

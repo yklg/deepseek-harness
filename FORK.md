@@ -8,10 +8,10 @@
 
 | 区域 | 文件 | 改动 | 回滚点 |
 |---|---|---|---|
-| 布局互换 | `packages/client/ui-layout/src/client/{columns.ts,AppFrame.tsx,AppFrame.module.css,stores.ts}` + tests | 列序 `sidebar → rightbar(浏览器/中控) → center(对话)`；列宽常量、拖拽方向、持久化 | `git revert` 该目录提交 |
-| 右栏镜像 | `packages/client/ui-sidebar-right/src/client/shell/SidebarRight.module.css` + tests | 面板左侧锚定、滑动/隐藏方式、平台全屏规则 | 同上 |
+| 布局互换 | `packages/client/ui-layout/src/client/{columns.ts,AppFrame.tsx,AppFrame.module.css,stores.ts}` + tests | 列序 `sidebar → rightbar(浏览器/中控) → center(对话)`；列宽常量、拖拽方向、持久化；全屏时 frame 打 `data-window-drag-suppressed` | `git revert` 该目录提交 |
+| 右栏镜像 | `packages/client/ui-sidebar-right/src/client/shell/{SidebarRight.tsx,SidebarRight.module.css}` + tests | 面板左侧锚定、滑动/隐藏方式、平台全屏规则；全屏面板打 `data-window-drag-surface` | 同上 |
 | Desktop 外壳 | `apps/desktop/src/{browser-guests.ts,host-process.ts,main.ts,preload-browser.ts,ipc.ts,project-manager.ts}` + tests | persist 分区、clearStorage、AutomationBroker、profile 迁移 | 按文件回滚 |
-| 浏览器小改 | `packages/client/ui-sidebar-browser/README.md`（及后续 guide 清理入口） | 文档/清理入口 | 按文件回滚 |
+| 浏览器小改 | `packages/client/ui-sidebar-browser/src/client/{browser,electron,view,index.ts,locales.ts}`、`client/web/src/{base.css,window-drag/regions.ts}` | 内嵌网页缩放（per-tab 持久化、toolbar、快捷键、8 语言）；全屏拖拽抑制/恢复标记；README | 按文件回滚 |
 | 产品包 | `packages/ecom/*` | 新增，无上游对应 | 删除目录 |
 | 品牌/打包 | `apps/desktop/scripts/electron-builder-config.mjs`、`resources/icon*`、`locale.ts`、`.env.windows` | 产品名/图标/打包配置 | 按文件回滚 |
 | Web e2e | `apps/web/tests/{sidebar-right,ecom-workbench}.e2e.ts`、`apps/web/tsconfig.json` | 新布局/工作台全链路断言；host-plane 用例排除 | 按文件回滚 |
@@ -78,9 +78,19 @@
 - 恢复标签复验（2026-11-08，优雅关闭后重启）：浏览器标签恢复了直播中控地址且 lease 已存在；页面尚未加载时 `attach` 即成功，点“前往”加载后仍是同一 targetId，`evaluate document.title` → `"直播中控台"`，`targets` 列出该 target，`detach` 正常。首个实例的 `target/not-found` 未再复现，更像会话/面板切换期间的瞬时释放，不再按 lease 缺口跟踪。
 - 现场：验证用的是 example.com；结束后已把该标签导航回直播中控 URL。
 
+## W1 修复记录：全屏按钮吞点击与内嵌网页缩放（2026-11-08）
+
+- **Bug 1（全屏右上角按钮无反应）**：根因是 Electron 的 `-webkit-app-region` 按几何 + DOM 顺序合成，不看层叠；全屏面板的三个控件被文档顺序更靠后的会话头拖拽行盖住，原生按下被当作拖窗口。修复：ui-web 发布 `SUPPRESS_MARK`/`SURFACE_MARK`；全屏时 frame 打 `data-window-drag-suppressed`，面板打 `data-window-drag-surface`；base.css 丢弃被覆盖行的 drag 盒（`initial`），并让面板自身被标记的行恢复 drag。面板 strip 仍可拖，控件保持 `no-drag`。
+- **Bug 2（内嵌网页不能缩放）**：`BrowserFrameState` 增加 `zoomFactor`，`BrowserFrame` 增加可选 `BrowserZoomControl`；`ElectronWebViewImpl` 在 dom-ready / did-navigate / 重新挂载时施加 `setZoomFactor`（50–300%，10% 步进）；`BrowserTabState.zoom` 随导航检查点持久化；toolbar 增加「缩小 / 当前百分比（点击重置）/ 放大」；桌面快捷键 `browser.zoom.in|out|reset` 绑定 `primary+alt+=/-/0`（`primary+=/-` 已被应用字号占用）；8 语言文案。Web iframe 不支持页面缩放，toolbar 隐藏该组。
+- 单测：`ui-sidebar-browser` 12 文件 / 55 tests；`ui-layout`、`ui-sidebar-right`、`ui-web`、`ui-theme` 定向用例全绿（app-region 门禁改为接受「基础标记 + surface 恢复」两条 drag 规则）。
+- Web e2e：`window-drag-coverage.e2e.ts` 13/13 PASS（面板测试内加入全屏断言：被覆盖 header 退出合成、strip 可拖、两个面板控件与 `swallowedBoxes` 全绿）；`sidebar-right` 22、`sidebar-browser` 1、`ecom-workbench` 1，24/24 PASS。
+- 构建/门禁：`build:artifacts` 8/8、`build:check` 2/2、`test:docs` 21/21、`verify-client-ui-i18n` PASS、定向 oxlint 0。
+- Electron 实机（独立端口 9322 的第二实例，DSH_HOME 隔离）：toolbar 100% → 110% → 120% → 重置 100%；guest `devicePixelRatio` 2 → 2.4、`innerWidth` 576 → 480，重置后回到 2 / 576；刷新后仍保持 110%，localStorage 检查点含 `"zoom":1.1`；全屏时 frame `data-window-drag-suppressed`、面板 `data-window-drag-surface` 均为 true，会话头计算值为 `none`、面板 strip 为 `drag`、关闭/退出全屏/收起三控件为 `no-drag` 且命中测试落在控件内。
+- 未验证/限制：原生物理点击三按钮已由用户实机确认（2026-11-08：全屏下「退出全屏」「收起右侧边栏」「关闭」均生效）；缩放快捷键只在宿主页面持有键盘焦点时生效（焦点在 guest 内时用 toolbar），已写入 README 已知限制。
+- 顺带修复：W1 自增样式触发 ui-theme scrollbar 门禁（`LiveConsoleTab .error`、`WorkbenchPage .metric` 改用非 elevated 底色）；`window-drag-coverage` 面板落位断言原先误比 `innerWidth`，改为轨道右缘，并在折叠用例先等 header `x==0` 再取样。
+
 ## 下一步（W1 之后）
 
-1. **真实 broker 深验**：启动已通、通道已连；还需在桌面进程用工具调用真实执行 attach/evaluate/detach，并验证窗口/登录持久化与异常恢复。
-2. **高风险写执行器**：发送、改价、上下架、库存需要云营写 API；审批策略已接入，执行器落地时复用 `ecom_*` 工具名。
-3. **其余 web 快照/全量 GUI**：`test:web` 全量与 `test:gui` 交给 CI；本机已跑受影响的两个 e2e 与 ecom 定向单测。
-4. **产品打包/品牌**：按「补丁面」表继续维护桌面打包、图标与 Windows 未签名包。
+1. **高风险写执行器**：发送、改价、上下架、库存需要云营写 API；审批策略已接入，执行器落地时复用 `ecom_*` 工具名。
+2. **其余 web 快照/全量 GUI**：`test:web` 全量与 `test:gui` 交给 CI；本机已跑受影响的 e2e 与 ecom 定向单测。
+3. **产品打包/品牌**：按「补丁面」表继续维护桌面打包、图标与 Windows 未签名包。

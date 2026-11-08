@@ -13,4 +13,4 @@ export npm_config_registry="https://registry.npmmirror.com/"
 # Native addons (koffi) link N-API symbols dynamically on macOS.
 export LDFLAGS="-undefined dynamic_lookup"
 # No Git metadata in this checkout; keep the build's client environment resolvable.
-export DSH_CLIENT_COMMIT_HASH="0000000"
+export electron_config_cache="$DSH_REPO/.electron-cache"

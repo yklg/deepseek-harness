@@ -9,6 +9,7 @@ import {
   realpathSync,
   closeSync,
   readFileSync,
+  renameSync,
   unlinkSync,
   writeFileSync,
   writeSync,
@@ -29,6 +30,10 @@ const PROJECT_NAME = '@deepseek-ai/dsh-desktop-runtime'
 const DSH_PACKAGE = '@deepseek-ai/dsh'
 const CORE_BUILD_PACKAGE = '@deepseek-ai/dsh-subprocess-local'
 const WEB_PROFILE = PROFILE_TEMPLATES.web as ProfileTemplate
+/** Product layer installed over the shared Web template; its patch adds the workbench rows. */
+const PRODUCT_BUNDLE_PACKAGE = '@deepseek-ai/dsh-bundle-ecom-workbench'
+/** Bundle layers every product profile initializes, migrates to, and recovers to. */
+const PRODUCT_PROFILE_BUNDLES: readonly string[] = [...WEB_PROFILE.bundles, PRODUCT_BUNDLE_PACKAGE]
 const WORKSPACE_SETTINGS = 'nodeLinker: hoisted\nautoInstallPeers: false\n'
 function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, undefined, 2)}\n`, { mode: 0o600 })
@@ -73,7 +78,9 @@ export class DesktopProjectManager {
    * @returns Backup path after the locked profile write, or undefined if the patch was absent.
    */
   async disableAllPlugins(): Promise<string | undefined> {
-    return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, WEB_PROFILE.bundles))
+    // Recovery keeps the product bundle: disabling third-party plugins must not
+    // remove the workbench surface the product ships with.
+    return this.withLock(() => sanitizeProfile('dsh', this.paths.profile, PRODUCT_PROFILE_BUNDLES))
   }
 
   /**
@@ -85,6 +92,7 @@ export class DesktopProjectManager {
       readDesktopRuntime(this.runtime.dsh)
       migrateProfileSettings(this.paths.profile)
       createPluginProfile(this.paths.profile)
+      ensureProfileBundles(this.paths.profile)
       removeLinkProjections(this.paths.profile)
     })
   }
@@ -171,5 +179,52 @@ export function createDevelopmentProjectMetadata(projectDir: string, release: De
 
 /** Create the first external plugin profile without running a package manager. */
 export function createPluginProfile(projectDir: string): void {
-  initProfile(projectDir, WEB_PROFILE.bundles)
+  initProfile(projectDir, PRODUCT_PROFILE_BUNDLES)
+}
+
+/** Shape of the profile manifest this module reads and rewrites. */
+interface ProfileManifestShape {
+  dsh?: {
+    profile?: {
+      bundles?: unknown
+    }
+  }
+}
+
+/**
+ * Append the product bundle to an already initialized profile manifest.
+ * Existing profiles from the shared Web template predate the product layer, so
+ * preparation must migrate them instead of leaving them without its rows.
+ * An explicitly configured bundle list is preserved; only missing product
+ * entries are appended, and the write is atomic and idempotent.
+ * @param projectDir - initialized Desktop profile directory.
+ * @returns whether the manifest changed.
+ * @throws when the manifest is unreadable or its bundle list is not a string array.
+ */
+export function ensureProfileBundles(projectDir: string): boolean {
+  const manifestPath = join(projectDir, 'package.json')
+  if (!existsSync(manifestPath)) {
+    initProfile(projectDir, PRODUCT_PROFILE_BUNDLES)
+    return true
+  }
+  const text = readFileSync(manifestPath, 'utf8')
+  let manifest: ProfileManifestShape
+  try {
+    manifest = JSON.parse(text) as ProfileManifestShape
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error)
+    throw new Error(`desktop profile: cannot parse ${manifestPath}: ${detail}`)
+  }
+  const profile = manifest.dsh?.profile
+  const bundles = profile?.bundles
+  if (!Array.isArray(bundles) || bundles.some(bundle => typeof bundle !== 'string')) {
+    throw new Error(`desktop profile: ${manifestPath} has no dsh.profile.bundles string list`)
+  }
+  const missing = PRODUCT_PROFILE_BUNDLES.filter(bundle => !bundles.includes(bundle))
+  if (missing.length === 0) return false
+  bundles.push(...missing)
+  const temporaryPath = `${manifestPath}.tmp`
+  writeFileSync(temporaryPath, `${JSON.stringify(manifest, undefined, 2)}\n`, { mode: 0o600 })
+  renameSync(temporaryPath, manifestPath)
+  return true
 }

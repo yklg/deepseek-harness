@@ -36,6 +36,6 @@
 - [x] 列宽持久化：`createLayoutStore({ storage })` + `dsh.layout.rightbar`（afb75c83，测试含写读同 key/损坏复位/写失败降级）
 - [ ] 右栏镜像（ui-sidebar-right）——进行中
 - [ ] Desktop broker / persist 分区 / clearStorage
-- [ ] profile 迁移
+- [x] profile 迁移：product bundle 常量 + `createPluginProfile`/`ensureProfileBundles`（幂等/保留自定义/损坏 fail loud）+ `disableAllPlugins` 恢复列表保留产品 bundle；`apps/cli` 依赖声明产品 bundle
 - [ ] ecom 包骨架 + bundle
 - [ ] dev:desktop 手验

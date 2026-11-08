@@ -901,22 +901,30 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-ecom-workbench-server`
 
-- `source`: [`packages/ecom/workbench-server/src/index.ts:21`](../packages/ecom/workbench-server/src/index.ts)
+- `inject`: `tools`
+- `source`: [`packages/ecom/workbench-server/src/index.ts:40`](../packages/ecom/workbench-server/src/index.ts)
 
 ```ts config-catalog
 /**
- * Workbench configuration grouped by the capability that will consume it.
- * Every group is optional at the row; the resolved groups exist because each
- * nested field has a default, so a row may enable a capability with no further
- * configuration.
+ * Workbench configuration grouped by the capability that consumes it.
+ * Every group may be omitted from the row; a group that names a field states
+ * all of its fields, and every field carries a default in the schema.
  */
 export interface Config {
   /** Yunying operations-platform connection. */
   yunying: {
-    /** Base URL of the operations platform; an empty value leaves the capability unconfigured. */
+    /** Base URL of the operations platform, as an origin; empty leaves the capability unconfigured. */
     endpoint: string
     /** Operations-platform workspace whose records the workbench reads. */
     workspaceId: string
+    /** Optional signing key identity sent with every read. */
+    keyId: string
+    /** Credential name holding the HMAC signing key. */
+    signingKeyEnv: string
+    /** Per-attempt deadline for one Yunying read, in milliseconds. */
+    requestTimeoutMs: number
+    /** Additional attempts after a failed Yunying read. */
+    maxRetries: number
   }
   /** Embedded browser automation. */
   browser: {
@@ -943,7 +951,7 @@ export interface Config {
   policy: {
     /** Whether actions require explicit user approval before they run. */
     requireApproval: boolean
-    /** Host allowlist for actions that reach the network; empty means no allowlist item. */
+    /** Hostnames or `*.domain` rules an automation allowlist must stay inside; empty accepts any hostname. */
     allowedHosts: string[]
   }
   /** Workbench record storage. */

@@ -33,6 +33,7 @@
       "@deepseek-ai/dsh-client-ui-workbench": ["./packages/ecom/client-ui-workbench/src/index.ts"],
       "@deepseek-ai/dsh-client-ui-workbench/client": ["./packages/ecom/client-ui-workbench/src/client/index.ts"],
       "@deepseek-ai/dsh-ecom-workbench-server": ["./packages/ecom/workbench-server/src/index.ts"],
+      "@deepseek-ai/dsh-ecom-workbench-server/types": ["./packages/ecom/workbench-server/src/types.ts"],
       "@deepseek-ai/dsh-bundle-ecom-workbench": ["./packages/ecom/bundle-workbench/src/index.ts"],
       "@deepseek-ai/dsh-client-ui-file-actions": ["./packages/client/ui-file-actions/src/index.ts"],
       "@deepseek-ai/dsh-client-ui-file-actions/client": ["./packages/client/ui-file-actions/src/client/index.ts"],

@@ -3,44 +3,56 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/ecom/workbench-server/README.md
 /:
-  en: 4a9695e85cf79d20
-  zh: 2f04f165aa3547f8
+  en: 84d3a612ec62121d
+  zh: 3f395d12bd183511
 /deepseek-ai-dsh-ecom-workbench-server:
   en: 068439bc3bbc3cde
   zh: 83565f9ce7d86848
 /deepseek-ai-dsh-ecom-workbench-server/summary:
-  en: 28e45af0ae650ab8
-  zh: ff6e60182f4600d4
+  en: fab721cc85911725
+  zh: 905f2b26bed409e6
 /deepseek-ai-dsh-ecom-workbench-server/table-of-contents:
   en: b563e4ec4727d0de
-  zh: d0228da978238e05
+  zh: e748d178a70e42b9
 /deepseek-ai-dsh-ecom-workbench-server/use-this-package:
-  en: 031401323d3ff58f
-  zh: 8c1fc6f2cf8c9e87
+  en: 95c4fd6f1c510358
+  zh: 6644f33f535bdf91
+/deepseek-ai-dsh-ecom-workbench-server/use-this-package/browser-automation:
+  en: 740756dfbdde42f4
+  zh: c2d02b770b9d2996
+/deepseek-ai-dsh-ecom-workbench-server/use-this-package/yunying-reads:
+  en: 39bc0b1e14c29f99
+  zh: 3ff3018b6696dec2
+/deepseek-ai-dsh-ecom-workbench-server/use-this-package/draft-tools-and-approval:
+  en: 77e816a4c3d90be4
+  zh: 592436ae5245795a
 /deepseek-ai-dsh-ecom-workbench-server/understand-the-implementation:
-  en: 24c4d4962bce8844
-  zh: f4689df0ad8ba6d2
+  en: d1b75c58e1c7e955
+  zh: aa104f5fff6b87eb
 /deepseek-ai-dsh-ecom-workbench-server/further-exploration:
-  en: 25211044f68bedb7
-  zh: dba88f46e6479658
+  en: 2a73ab23f786a619
+  zh: 3a12fd92422ec055
 /deepseek-ai-dsh-ecom-workbench-server/model-experience:
   en: 215e7ba838619b7b
-  zh: a311da3843709f90
-/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration:
-  en: 09af43ae19cbf11e
-  zh: bfb5c349f5a2cc63
-/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/what-the-model-sees:
-  en: d269f982f6c378ab
-  zh: 387072c4f6e64e61
-/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/token-effect:
-  en: b4de7a7d1902a50c
-  zh: 16153100afc7e017
-/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-host-configuration/kv-cache-effect:
-  en: 162a5e4865d11114
-  zh: f3740b85e1c7d9e9
+  zh: e61c78b7d37628ed
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-tools:
+  en: cbefb0e5f72175ae
+  zh: d4c48933abe51524
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-tools/what-the-model-sees:
+  en: f4a29d7867abc6a0
+  zh: 26950ef280bedce8
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-tools/what-the-model-sees/approval-prompt:
+  en: 49edc4dbebd3844b
+  zh: 49edc4dbebd3844b
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-tools/token-effect:
+  en: ed5dcfe7641ad4bc
+  zh: 7a61f2063e131f65
+/deepseek-ai-dsh-ecom-workbench-server/model-experience/workbench-tools/kv-cache-effect:
+  en: 6715767f094bfc37
+  zh: 9a37bb964f94945c
 /deepseek-ai-dsh-ecom-workbench-server/known-limitations-and-deferred-work:
-  en: c885ef6d62e6df2e
-  zh: 1673dcdff47dd480
+  en: 976edbbc0c4af5bd
+  zh: 9f7cfb49c634877a
 /deepseek-ai-dsh-ecom-workbench-server/known-limitations-and-deferred-work/dev-note:
   en: 0a1253c6f7b5e8b9
   zh: 9f56528562c7c914

@@ -489,7 +489,19 @@ export class AutomationBroker {
     if (!originAllowed(url, target.allowOrigins)) {
       throw new AutomationBrokerError('target/origin-denied', 'desktop automation: target left the approved origins')
     }
-    const value: unknown = await executeWithin(guest.executeJavaScript(script, true), timeoutMs)
+    let value: unknown
+    try {
+      value = await executeWithin(guest.executeJavaScript(script, true), timeoutMs)
+    } catch (error) {
+      if (error instanceof AutomationBrokerError) throw error
+      // Electron rejects a result that cannot cross the context bridge before
+      // the value reaches assertSerializableResult; a script error stays a
+      // script error and is not rewritten as a result contract failure.
+      if (error instanceof Error && error.message.includes('An object could not be cloned')) {
+        throw new AutomationBrokerError('result/not-json', 'desktop automation: script result is not JSON-serializable')
+      }
+      throw error
+    }
     assertSerializableResult(value)
     return value
   }

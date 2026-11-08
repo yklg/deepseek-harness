@@ -1,5 +1,14 @@
+# The product workbench: one Host row carrying automation, Yunying reads, and
+# draft tools, plus the browser row that renders the launcher and live console.
+# Desktop profiles get the private automation channel; other profiles load the
+# same rows and report automation as unavailable.
+
 - insert:
     - id: ecom-workbench-server
       name: '@deepseek-ai/dsh-ecom-workbench-server'
+      config:
+        browser:
+          enabled: true
+
     - id: ecom-workbench-ui
       name: '@deepseek-ai/dsh-client-ui-workbench'

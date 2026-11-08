@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The composition carrier for the ecom workbench. Its `cordis.patch.yml` inserts two rows into the profile: `ecom-workbench-server` mounts the Host configuration surface, and `ecom-workbench-ui` mounts the browser launcher and live-console tab. The bundle owns no behavior of its own; each row's package owns its registrations.
+The composition carrier for the ecom workbench. Its `cordis.patch.yml` inserts two rows into the profile: `ecom-workbench-server` mounts the Host service with browser automation enabled, and `ecom-workbench-ui` mounts the browser launcher and live-console tab. The bundle owns no behavior of its own; each row's package owns its registrations.
 
 ## Table of Contents
 
@@ -26,7 +26,7 @@ The composition carrier for the ecom workbench. Its `cordis.patch.yml` inserts t
 
 Install the bundle into a profile and enable it. The two rows are inserted with fixed ids, so a profile patch can target either row by id to change its configuration or disable it; an inserted row that no profile needs can stay disabled without uninstalling the bundle.
 
-The rows are placeholders: the Host row validates configuration but registers no service, and the browser row opens placeholder surfaces. Capability packages replace them as separate rows later, keeping this bundle a pure carrier.
+The inserted Host row starts with `browser.enabled: true` so the desktop product profile can drive the browser guest. A profile without the Electron private channel still loads both rows; the Host reports automation as unavailable and the UI states that in the launcher and console.
 
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
@@ -45,22 +45,22 @@ The rows are placeholders: the Host row validates configuration but registers no
 
 #### What the model sees
 
-Nothing. The bundle applies `cordis.patch.yml`, which inserts the `ecom-workbench-server` Host row and the `ecom-workbench-ui` browser row; both packages own their (currently empty) contributions, so the model request is unchanged.
+The Host row's three draft tools: `ecom_draft_product_script`, `ecom_draft_quick_replies`, and `ecom_draft_comment_reply`. The browser row adds nothing model-visible. The bundle itself adds no prompt section, context contribution, or session event.
 
 #### Token effect
 
-Zero direct token effect.
+The bundle adds the Host row's tool schemas and drafts to requests whenever it is loaded.
 
 #### KV Cache effect
 
-Does not invalidate: the patch adds no request tokens, so any reusable request prefix stays reusable.
+Loading or unloading the bundle changes the tool set, so a request prefix formed with it stays reusable only while the same rows remain loaded.
 
 ## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
 
-- **Placeholder composition** — both inserted rows are skeletons; workbench capabilities arrive as their own packages and rows, and this bundle only composes them.
-- **No configuration preset** — the bundle inserts rows with their defaults; a deployment that needs workbench configuration patches a row by id.
+- **Desktop automation only** — profiles without the Electron Host load the rows but report automation unavailable.
+- **One configuration preset** — the bundle only enables browser automation; every other workbench setting stays at its package default until a profile patches the row by id.
 - **Not mounted by the shipped Web profile** — this product bundle is enabled explicitly; the upstream Web profile does not include it.
 
 <a id="dev-note"></a>

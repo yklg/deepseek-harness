@@ -4,43 +4,43 @@
 #   pnpm run verify-translation-pairing --write packages/ecom/bundle-workbench/README.md
 /:
   en: 62365ef4d4ae9f9f
-  zh: ad250e75a8562ac1
+  zh: 45d36936ffbe6810
 /deepseek-ai-dsh-bundle-ecom-workbench:
   en: a5e73ec79b5add85
   zh: 03e3eb96331d09e1
 /deepseek-ai-dsh-bundle-ecom-workbench/summary:
-  en: 43e187e17e66d6f7
-  zh: 4a104edb9d156839
+  en: c7f67ff5ca6d57dc
+  zh: dc2bac29d0e1d80d
 /deepseek-ai-dsh-bundle-ecom-workbench/table-of-contents:
   en: b563e4ec4727d0de
-  zh: d0228da978238e05
+  zh: e748d178a70e42b9
 /deepseek-ai-dsh-bundle-ecom-workbench/use-this-package:
-  en: bc55e1518af82492
-  zh: 201d20e8b980395e
+  en: 2250186309226a9d
+  zh: e6a40dd8d14b8faa
 /deepseek-ai-dsh-bundle-ecom-workbench/understand-the-implementation:
   en: df76b9240ceb6201
-  zh: 6ba51e8c2df7bca7
+  zh: ceb08c4b3f555224
 /deepseek-ai-dsh-bundle-ecom-workbench/further-exploration:
   en: fb607b2eecd91ebe
-  zh: 7867f5a7b0101cd1
+  zh: e24f0ec65f188c68
 /deepseek-ai-dsh-bundle-ecom-workbench/model-experience:
   en: 215e7ba838619b7b
-  zh: a311da3843709f90
+  zh: e61c78b7d37628ed
 /deepseek-ai-dsh-bundle-ecom-workbench/model-experience/composed-workbench-rows:
   en: 7347843939903f03
   zh: 69ad75a148387338
 /deepseek-ai-dsh-bundle-ecom-workbench/model-experience/composed-workbench-rows/what-the-model-sees:
-  en: 81ece1cae46ca87e
-  zh: 4b9ba555dc2f6d60
+  en: d013fabf3c6d0832
+  zh: 7d89d6f7d8f58c9b
 /deepseek-ai-dsh-bundle-ecom-workbench/model-experience/composed-workbench-rows/token-effect:
-  en: b4de7a7d1902a50c
-  zh: 16153100afc7e017
+  en: 9d92beca0b8a66e2
+  zh: 4707611bb314c33f
 /deepseek-ai-dsh-bundle-ecom-workbench/model-experience/composed-workbench-rows/kv-cache-effect:
-  en: aa019b09ba634fe7
-  zh: 3db9416b82ed7f68
+  en: 72aedfe9a803ba40
+  zh: 6dcb1567a56ab683
 /deepseek-ai-dsh-bundle-ecom-workbench/known-limitations-and-deferred-work:
-  en: 2b7331cb8f05a03b
-  zh: 7e6eb4ad84de2311
+  en: 9cff6e09fc6c0c3c
+  zh: b1ae6cc4689751a6
 /deepseek-ai-dsh-bundle-ecom-workbench/known-limitations-and-deferred-work/dev-note:
   en: 0a1253c6f7b5e8b9
   zh: 9f56528562c7c914

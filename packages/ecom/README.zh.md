@@ -9,7 +9,7 @@ kind: "package-group"
 
 ## 概述
 
-ecom 组承载产品分支的电商直播工作台。它包含一个 Host 配置面、Web 启动页与实时控制台 UI，以及一个为产品配置档组合两行的组合包。这些包相对上游基线是新增的，因此本 README 是它们唯一的地图；随着工作台成长，能力包会加入本组，而组合方式保持为补丁载体。
+ecom 组承载产品分支的电商直播工作台。它包含 Host 自动化授权、云营只读接入与草稿工具，Web 启动页与实时控制台 UI，以及一个为产品配置档组合两行的组合包。这些包相对上游基线是新增的，因此本 README 是它们唯一的地图；组合方式保持为补丁载体。
 
 ## 目录
 
@@ -24,8 +24,8 @@ ecom 组承载产品分支的电商直播工作台。它包含一个 Host 配置
 
 | 包 | 职责 | ctx 键 |
 |---|---|---|
-| [`workbench-server`](workbench-server/README.zh.md) | 工作台的 Host 配置面与空的插件主体 | 暂无 |
-| [`client-ui-workbench`](client-ui-workbench/README.zh.md) | Web 侧栏启动页与 `live-console` 右侧栏标签页 | 注册槽位 |
+| [`workbench-server`](workbench-server/README.zh.md) | Host 自动化授权、云营只读接入与草稿工具 | `workbench` / `remote.workbench` |
+| [`client-ui-workbench`](client-ui-workbench/README.zh.md) | 基于 workbench Remote 的 Web 启动页与实时控制台标签页 | 注册槽位 |
 | [`bundle-workbench`](bundle-workbench/README.zh.md) | 插入 Host 行与 Web UI 行的组合包补丁 | 不适用 |
 
 -----

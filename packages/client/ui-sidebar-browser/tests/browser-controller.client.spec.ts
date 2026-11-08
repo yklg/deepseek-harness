@@ -7,7 +7,7 @@ import { createIframePage } from '../src/client/pages.ts'
 import type { BrowserPageFactory, BrowserPageOptions } from '../src/client/browser/BrowserPage.ts'
 import { browserAddressCheckpoint } from '../src/client/browser/BrowserPersistence.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { emptyBrowserFrame, type BrowserFrameState } from '../src/client/browser/BrowserFrame.ts'
+import { emptyBrowserFrame, clampBrowserZoom, type BrowserFrameState } from '../src/client/browser/BrowserFrame.ts'
 
 const TAB = 'tab' as TabId
 const APP = 'https://dsh.example'
@@ -54,6 +54,46 @@ afterEach(async () => {
 })
 
 describe('BrowserController', () => {
+  it('steps and resets embedded zoom through the optional provider control', () => {
+    const frames = createSnapshotStore<BrowserFrameState>({ ...emptyBrowserFrame(), zoomFactor: 1 })
+    const setFactor = vi.fn((factor: number) => {
+      frames.set({ ...frames.getSnapshot(), zoomFactor: clampBrowserZoom(factor) })
+    })
+    const pageFactory: BrowserPageFactory = () => ({
+      frame: { getSnapshot: () => frames.getSnapshot(), subscribe: listener => frames.subscribe(listener),
+        loadUrl: vi.fn(), goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), dispose: async () => {}, zoom: { setFactor } },
+      presentation: { mount: () => () => {}, dispose: () => {} },
+    })
+    const store = createBrowserStore().create('browser-controller-zoom')
+    const controller = new BrowserController({ tabId: TAB, signal: lifetime().signal, applicationOrigin: APP,
+      actions: store.actions, initial: undefined, createPage: pageFactory, openTab: vi.fn() })
+    disposables.push(controller)
+    controller.zoomIn()
+    expect(setFactor).toHaveBeenLastCalledWith(1.1)
+    controller.zoomIn()
+    expect(setFactor).toHaveBeenLastCalledWith(1.2)
+    controller.zoomOut()
+    expect(setFactor).toHaveBeenLastCalledWith(1.1)
+    controller.resetZoom()
+    expect(setFactor).toHaveBeenLastCalledWith(1)
+    expect(controller.getSnapshot().frame.zoomFactor).toBe(1)
+    // A provider that publishes zoom but reports no current factor cannot step.
+    frames.set({ ...emptyBrowserFrame() })
+    controller.zoomIn()
+    expect(setFactor).toHaveBeenCalledTimes(4)
+  })
+
+  it('leaves providers without a zoom control alone', () => {
+    const h = harness()
+    h.mount(lifetime().signal)
+    const state = h.face.keyedHooks.browserState(TAB)!
+    expect(state.getSnapshot().frame.zoomFactor).toBeUndefined()
+    h.face.zoomIn(TAB)
+    h.face.zoomOut(TAB)
+    h.face.resetZoom(TAB)
+    expect(state.getSnapshot().frame.zoomFactor).toBeUndefined()
+  })
+
   it('restores only on request and redirects saved checkpoints to a replacement binding', () => {
     const h = harness()
     const saved = browserAddressCheckpoint({ kind: 'https', url: 'https://saved.example/', title: 'Saved page' }, 2)

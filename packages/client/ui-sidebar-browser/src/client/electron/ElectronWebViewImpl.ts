@@ -2,9 +2,10 @@
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { DesktopBrowserBridge, DesktopBrowserLeaseId } from '../../types.ts'
 import type { ElectronWebviewPresentation, WebviewElement } from './ElectronWebviewPresentation.ts'
-import { emptyBrowserFrame, type BrowserFrame, type BrowserFrameState, type BrowserLoadError } from '../browser/BrowserFrame.ts'
+import { emptyBrowserFrame, savedBrowserZoom, clampBrowserZoom, type BrowserFrame, type BrowserFrameState,
+  type BrowserLoadError, type BrowserZoomControl } from '../browser/BrowserFrame.ts'
 import type { BrowserPageOptions } from '../browser/BrowserPage.ts'
-import { browserAddressCheckpoint, currentBrowserTarget } from '../browser/BrowserPersistence.ts'
+import { browserAddressCheckpoint, browserZoomCheckpoint, currentBrowserTarget } from '../browser/BrowserPersistence.ts'
 import { parseBrowserAddress, type BrowserTarget } from '../browser/url.ts'
 
 interface NavigationEvent extends Event { readonly isMainFrame: boolean }
@@ -15,6 +16,7 @@ interface LoadFailureEvent extends NavigationEvent {
 
 /** Owns native history and translates Electron observations into common frame state. */
 export class ElectronWebViewImpl implements BrowserFrame {
+  readonly zoom: BrowserZoomControl = { setFactor: (factor) => { this.setZoom(factor) } }
   private readonly store: SnapshotStore<BrowserFrameState>
   private readonly lifetime = new AbortController()
   private guestLifetime: AbortController | undefined
@@ -27,6 +29,7 @@ export class ElectronWebViewImpl implements BrowserFrame {
   private revision = 0
   private firstDocument = true
   private checkpoint: BrowserTarget | undefined
+  private zoomFactor: number
   private disposal: Promise<void> | undefined
   private attachment: AbortController | undefined
   private readonly releases = new Set<Promise<void>>()
@@ -41,7 +44,8 @@ export class ElectronWebViewImpl implements BrowserFrame {
     private readonly workspace: (signal: AbortSignal) => Promise<string>,
     private readonly presentation: ElectronWebviewPresentation) {
     this.checkpoint = currentBrowserTarget(options.initial)
-    this.store = createSnapshotStore(emptyBrowserFrame())
+    this.zoomFactor = savedBrowserZoom(options.initial?.zoom)
+    this.store = createSnapshotStore({ ...emptyBrowserFrame(), zoomFactor: this.zoomFactor })
   }
 
   /** @returns immutable carrier-neutral navigation state. */
@@ -59,6 +63,9 @@ export class ElectronWebViewImpl implements BrowserFrame {
         canGoBack: false, canGoForward: false, error: undefined })
       this.initialize()
     }
+    // Another tab of the same partition may have changed the guest's zoom while
+    // this one was hidden; every physical attachment reasserts this tab's factor.
+    this.applyZoom()
   }
 
   /** Invalidate pending attachment before the containing DOM is removed. */
@@ -158,12 +165,13 @@ export class ElectronWebViewImpl implements BrowserFrame {
     signal.addEventListener('abort', unsubscribeOpen, { once: true })
     element.addEventListener('dom-ready', () => {
       this.ready = true
+      this.applyZoom()
       this.observe(this.store.getSnapshot().address !== 'requested')
       this.loadPending()
     }, { signal })
-    element.addEventListener('did-navigate', () => { this.observe(true) }, { signal })
+    element.addEventListener('did-navigate', () => { this.applyZoom(); this.observe(true) }, { signal })
     element.addEventListener('did-navigate-in-page', (event) => {
-      if ((event as NavigationEvent).isMainFrame) this.observe(true)
+      if ((event as NavigationEvent).isMainFrame) { this.applyZoom(); this.observe(true) }
     }, { signal })
     element.addEventListener('did-start-navigation', (event) => {
       if ((event as NavigationEvent).isMainFrame) {
@@ -234,7 +242,23 @@ export class ElectronWebViewImpl implements BrowserFrame {
   private persist(target: BrowserTarget): void {
     if (target.url === this.checkpoint?.url && target.title === this.checkpoint.title) return
     this.checkpoint = target
-    this.options.persist(browserAddressCheckpoint(target, this.revision))
+    this.options.persist(browserAddressCheckpoint(target, this.revision, this.zoomFactor))
+  }
+
+  private setZoom(factor: number): void {
+    if (this.lifetime.signal.aborted) return
+    const next = clampBrowserZoom(factor)
+    if (next === this.zoomFactor) return
+    this.zoomFactor = next
+    this.store.set({ ...this.store.getSnapshot(), zoomFactor: next })
+    this.applyZoom()
+    this.options.persist(browserZoomCheckpoint(this.checkpoint, this.revision, next))
+  }
+
+  private applyZoom(): void {
+    if (!this.ready || this.element === undefined || this.lifetime.signal.aborted) return
+    try { this.element.setZoomFactor(this.zoomFactor) }
+    catch (error) { console.error('Desktop browser zoom failed', error) }
   }
 
   private failed(error: BrowserLoadError = { code: undefined, description: undefined }): void {

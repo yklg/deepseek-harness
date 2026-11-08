@@ -43,6 +43,19 @@ export const inject = ['slots', 'locale', 'sidebarRight', 'sidebarRightTabs']
 export function apply(ctx: Context): void {
   const namespace = 'sidebarBrowser'
   const t = ctx.locale.bind(namespace)
+  const store = createBrowserStore()
+  const openTabs = ctx.sidebarRight.openTabs
+  const controllers = new Map<BrowserBodyProps['sessionId'], BrowserInjected>()
+  const carrier = (globalThis as typeof globalThis & {
+    dshDesktop?: { readonly protocolVersion: number; readonly browser?: DesktopBrowserBridge }
+  }).dshDesktop
+  const desktop = carrier?.protocolVersion === 1 ? carrier.browser : undefined
+  const zoomTarget = (element: Element | null): { controller: BrowserInjected; tabId: Parameters<BrowserInjected['zoomIn']>[0] } | undefined => {
+    const target = ctx.sidebarRight.commandTarget(element)
+    if (target?.tabId === undefined) return undefined
+    const controller = controllers.get(target.sessionId)
+    return controller === undefined ? undefined : { controller, tabId: target.tabId }
+  }
   ctx.inject(['shortcuts'], (ctx) => {
     ctx.effect(() => ctx.shortcuts.register({
       id: 'browser.new' as ShortcutCommandId, label: () => t('guide.title'), aliases: ['browser', 'new browser tab'],
@@ -63,17 +76,32 @@ export function apply(ctx: Context): void {
       },
       /* jscpd:ignore-end */
     }), 'ui-sidebar-browser: shortcut')
+    if (desktop === undefined) return
+    // The app owns primary+= / primary+- for its own font size, so embedded-page
+    // zoom binds the primary+alt variants; the toolbar remains the discoverable path.
+    const registerZoom = (key: 'in' | 'out' | 'reset', method: 'zoomIn' | 'zoomOut' | 'resetZoom', code: string): void => {
+      ctx.effect(() => ctx.shortcuts.register({
+        id: `browser.zoom.${key}` as ShortcutCommandId, label: () => t(`zoom.${key}`), aliases: [],
+        defaults: {
+          'desktop:macos': { code, modifiers: ['primary', 'alt'] },
+          'desktop:windows': { code, modifiers: ['primary', 'alt'] },
+          'desktop:linux': { code, modifiers: ['primary', 'alt'] },
+        },
+        regions: ['page', 'editable', 'terminal'], modals: [],
+        resolve: ({ target: element }) => {
+          const target = zoomTarget(element)
+          if (target === undefined) return { status: 'blocked', reason: t('shortcut.noBrowser') }
+          return { status: 'handled', run: () => { target.controller[method](target.tabId) } }
+        },
+      }), `ui-sidebar-browser: zoom ${key}`)
+    }
+    registerZoom('in', 'zoomIn', 'Equal')
+    registerZoom('out', 'zoomOut', 'Minus')
+    registerZoom('reset', 'resetZoom', 'Digit0')
   })
-  const store = createBrowserStore()
-  const openTabs = ctx.sidebarRight.openTabs
-  const carrier = (globalThis as typeof globalThis & {
-    dshDesktop?: { readonly protocolVersion: number; readonly browser?: DesktopBrowserBridge }
-  }).dshDesktop
-  const desktop = carrier?.protocolVersion === 1 ? carrier.browser : undefined
   ctx.effect(() => ctx.locale.register(namespace, { zh, en, ja, es, fr, de, ru, pt }), 'ui-sidebar-browser.copy')
   ctx.effect(() => ctx.sidebarRightTabs.register({ ...browserDefinition(t), keepMounted: desktop !== undefined }), 'ui-sidebar-browser.type')
   const installFrames = (scope: Context, factory: (sessionId: BrowserBodyProps['sessionId']) => BrowserPageFactory): void => {
-    const controllers = new Map<BrowserBodyProps['sessionId'], BrowserInjected>()
     scope.effect(() => async () => {
       const pending = [...controllers.values()].map(controller => controller.dispose())
       controllers.clear()

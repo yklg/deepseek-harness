@@ -30,11 +30,12 @@ export function electronFixture(initial?: BrowserTabState) {
   const guests: ReturnType<typeof prepareGuest>[] = []
   function prepareGuest(approved: DesktopBrowserReservation) {
     const element = create(approved)
-    const state = { url: 'about:blank', title: '', loading: true, back: false, forward: false }
+    const state = { url: 'about:blank', title: '', loading: true, back: false, forward: false, zoom: 1 }
     const methods = {
       loadURL: vi.fn(async (_url: string) => {}), getURL: vi.fn(() => state.url), getTitle: vi.fn(() => state.title),
       canGoBack: () => state.back, canGoForward: () => state.forward, clearHistory: vi.fn(),
       goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), isLoading: () => state.loading,
+      setZoomFactor: vi.fn((factor: number) => { state.zoom = factor }),
     }
     Object.assign(element, methods)
     const emit = (type: string, fields: object = {}): void => { element.dispatchEvent(Object.assign(new Event(type), fields)) }

@@ -6,6 +6,7 @@ import {
   IconChevronLeftOutlineRegular,
   IconChevronRightOutlineRegular,
   IconLinkOutlineRegular,
+  IconPlusOutlineRegular,
   IconRefreshOutlineRegular, Tooltip,
   IconRightUpOutlineRegular,
   SHIELD_OUTLINE_PATH,
@@ -13,7 +14,7 @@ import {
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { BrowserInjected } from '../browser/BrowserController.ts'
-import { emptyBrowserFrame } from '../browser/BrowserFrame.ts'
+import { BROWSER_ZOOM, emptyBrowserFrame } from '../browser/BrowserFrame.ts'
 import { currentBrowserTarget } from '../browser/BrowserPersistence.ts'
 import type { BrowserStore } from '../browser/store.ts'
 import css from './Browser.module.css'
@@ -45,7 +46,8 @@ function useBrowserDraft(url: string | undefined, revision: number): readonly [s
 
 /** Render provider-neutral navigation state and optional controls. */
 export function BrowserBody(props: BrowserBodyProps): ReactNode {
-  const { mount, loadUrl, restore, goBack, goForward, reload, setSandbox, useBrowserState, useStore, useTabInfo, t } = props
+  const { mount, loadUrl, restore, goBack, goForward, reload, setSandbox, zoomIn, zoomOut, resetZoom,
+    useBrowserState, useStore, useTabInfo, t } = props
   const { tab } = useTabInfo()
   useEffect(() => tab.actions.bindCommands({ refresh: () => { reload(tab.id) } }), [tab.actions, tab.id, reload])
   const saved = useStore(state => state.byTab[tab.id])
@@ -99,6 +101,22 @@ export function BrowserBody(props: BrowserBodyProps): ReactNode {
         <button type="button" className={css.tool} aria-label={t('external')} title={t('external')} disabled={externalUrl === undefined}
           onClick={externalUrl === undefined ? undefined : () => { window.open(externalUrl, '_blank', 'noopener,noreferrer') }}
         ><IconRightUpOutlineRegular size={14} /></button>
+        {frame.zoomFactor !== undefined && <div className={css.zoom} role="group" aria-label={t('zoom.label')}>
+          <button type="button" className={css.tool} aria-label={t('zoom.out')} title={t('zoom.out')}
+            disabled={frame.zoomFactor <= BROWSER_ZOOM.minimum} onClick={() => { zoomOut(tab.id) }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </button>
+          <button type="button" className={[css.tool, css.zoomLevel].join(' ')} aria-label={t('zoom.reset')}
+            title={t('zoom.reset')} onClick={() => { resetZoom(tab.id) }}>
+            {t('zoom.level', { percent: String(Math.round(frame.zoomFactor * 100)) })}
+          </button>
+          <button type="button" className={css.tool} aria-label={t('zoom.in')} title={t('zoom.in')}
+            disabled={frame.zoomFactor >= BROWSER_ZOOM.maximum} onClick={() => { zoomIn(tab.id) }}>
+            <IconPlusOutlineRegular size={14} />
+          </button>
+        </div>}
         {sandboxed !== undefined && <button
           type="button"
           className={[css.tool, sandboxed ? '' : css.sandboxOff].join(' ')}

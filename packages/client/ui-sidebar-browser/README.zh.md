@@ -46,6 +46,8 @@ Client 插件可以调用 `ctx.sidebarRight.openTab('browser', { params: { url }
 
 工具栏提供后退、前进、刷新、前往和在系统浏览器中打开。Web 还提供逐 tab sandbox 开关；关闭它是临时选择，并会显示灰字、琥珀色底的警告。Desktop 显示观察到的页面标题。重启后，Browser 展示保存的标题和 URL；只有点击恢复或刷新才打开该地址。
 
+Desktop 还提供内嵌网页缩放：toolbar 显示缩小、当前百分比与放大，点击百分比重置为 100%。范围为 50–300%，步进 10%；页面布局缩放而应用界面保持固定，缩放因子随 tab 保存的导航状态一起持久化。命令在 macOS 上绑定 Cmd+Option+=、Cmd+Option+- 与 Cmd+Option+0（Windows 与 Linux 为 Ctrl+Alt），因为应用已将 primary+= 与 primary+- 用于自身字号。Web 没有页面缩放控件，因而省略这一组。
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -105,7 +107,8 @@ Desktop 主进程批准 guest 租约，并执行挂载、导航和权限策略�
 - 在 Web 中，逃逸出 sandbox 的 popup 会保留 opener，并可以通过该链导航顶层应用。Desktop 会单独处理 popup 创建。
 - 后续 iframe load 能表明发生了导航，但无法给出新的跨域 URL。History API 与 fragment 变化可能仍不可见；状态变成 unknown 后，Web 的后退与前进不可用。
 - 出于安全原因，浏览器会隐藏很多 iframe 失败：DNS、TLS、mixed-content、CSP 与 `X-Frame-Options` 失败可能触发 `load`，也可能不提供可操作 event，而不是触发 `error`。加载失败 notice 只能作为 best-effort 提示。
-- 只要 tab 仍在 Sidebar 布局中，保存的标题和 URL 就会跨刷新与插件卸载保留。关闭 tab 会删除其检查点。重启恢复不恢复页面内存、未保存的表单或 Chromium history 栈。
+- 只要 tab 仍在 Sidebar 布局中，保存的标题和 URL 就会跨刷新与插件卸载保留。关闭 tab 会删除其检查点。重启恢复不恢复页面内存、未保存的表单或 Chromium history 栈。保存的缩放因子随地址一起恢复。
+- 页面缩放仅限 Desktop；Web 保持宿主应用自己的缩放。Desktop 的缩放快捷键是宿主页面上的按键事件，因此当键盘焦点位于内嵌页面内时不会到达应用——此时请使用 toolbar 控件。重新打开 tab 会重新施加其保存的因子，也就是共享 partition 上最后应用的那个值。
 - 本地文件会被拒绝，并继续由 Document Preview 负责。
 - Desktop 按规范化的工作区 CWD 共享进程内存储分区；没有解析到 Workspace 的 Session 单独隔离。Cookie 与 Web storage 不跨应用重启保留。guest 权限、下载与原生 popup 均被拒绝；通过检查的 HTTP(S) popup 请求会打开 Sidebar tab。Host 地址过滤不是通用私网或 DNS-rebinding 防火墙。
 

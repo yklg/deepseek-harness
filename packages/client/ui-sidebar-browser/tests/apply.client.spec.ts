@@ -13,6 +13,7 @@ import { BROWSER_ID, BROWSER_KIND } from '../src/client/definition.tsx'
 import { apply, inject } from '../src/client/index.ts'
 import { en, ja, zh, es, fr, de, ru, pt } from '../src/client/locales.ts'
 import { createBrowserStore } from '../src/client/browser/store.ts'
+import type { SidebarRightTarget } from '@deepseek-ai/dsh-client-ui-sidebar-right/src/client/focus.ts'
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { DesktopBrowserBridge, DesktopBrowserLeaseId } from '../src/types.ts'
 
@@ -54,8 +55,9 @@ async function boot(platform: ShortcutPlatform = 'macos', runtime: 'desktop' | '
     }),
   }
   const openTabs = createSnapshotStore<readonly { sessionId: string; tabId: TabId }[]>([])
-  const target = { sessionId: 'session', paneId: 'pane' }
-  const sidebar = { openTabs, commandTarget: vi.fn<() => typeof target | undefined>(() => target),
+  const target = { sessionId: 'session', paneId: 'pane', host: 'dock', tabId: undefined,
+    occurrence: undefined, navigationRevision: undefined } as unknown as SidebarRightTarget
+  const sidebar = { openTabs, commandTarget: vi.fn<() => SidebarRightTarget | undefined>(() => target),
     openTabFromTarget: vi.fn() }
   const registry = new ShortcutRegistry(runtime, platform)
   ctx.provide('sidebarRight', sidebar as never)
@@ -160,6 +162,45 @@ describe('ui-sidebar-browser apply', () => {
       expect(h.registry.dispatch(gesture, context, consume).status).toBe('blocked')
     } finally { await h.fiber.dispose() }
     expect(h.registry.catalog.getSnapshot()).toEqual([])
+  })
+
+  it('registers embedded zoom shortcuts on Desktop and routes them to the focused browser tab', async () => {
+    const bridge: DesktopBrowserBridge = {
+      acquire: vi.fn(async () => ({ lease: 'test-lease' as DesktopBrowserLeaseId, partition: 'test-partition' })),
+      release: vi.fn(async () => {}),
+      onOpenRequested: vi.fn(() => () => {}),
+      clearStorage: vi.fn(async () => {}),
+    }
+    vi.stubGlobal('dshDesktop', { protocolVersion: 1, browser: bridge })
+    const h = await boot()
+    try {
+      expect(h.registry.catalog.getSnapshot().map(row => row.id).sort()).toEqual(
+        ['browser.new', 'browser.zoom.in', 'browser.zoom.out', 'browser.zoom.reset'])
+      const tabId = 'browser-zoom-tab' as TabId
+      h.sidebar.commandTarget.mockReturnValue({ ...h.target, tabId })
+      const injectFace = h.registered.find(entry => entry.name === 'sidebar.right.pane.tab')!.inject as
+        (sessionId: string, actions: Parameters<BrowserInjected['rebind']>[0]) => BrowserInjected
+      const face = injectFace('session', createBrowserStore().create('zoom-shortcuts').actions)
+      const zoomIn = vi.spyOn(face, 'zoomIn')
+      const zoomOut = vi.spyOn(face, 'zoomOut')
+      const resetZoom = vi.spyOn(face, 'resetZoom')
+      const consume = vi.fn()
+      const context = { region: 'page' as const, modal: null, target: null }
+      const gesture = { control: false, alt: true, shift: false, meta: true, repeat: false, composing: false, defaultPrevented: false }
+      expect(h.registry.dispatch({ ...gesture, code: 'Equal' }, context, consume).status).toBe('handled')
+      expect(h.registry.dispatch({ ...gesture, code: 'Minus' }, context, consume).status).toBe('handled')
+      expect(h.registry.dispatch({ ...gesture, code: 'Digit0' }, context, consume).status).toBe('handled')
+      expect(zoomIn).toHaveBeenCalledExactlyOnceWith(tabId)
+      expect(zoomOut).toHaveBeenCalledExactlyOnceWith(tabId)
+      expect(resetZoom).toHaveBeenCalledExactlyOnceWith(tabId)
+
+      h.sidebar.commandTarget.mockReturnValue({ ...h.target, sessionId: 'other' as SidebarRightTarget['sessionId'], tabId })
+      expect(h.registry.dispatch({ ...gesture, code: 'Equal' }, context, consume).status).toBe('blocked')
+      h.sidebar.commandTarget.mockReturnValue({ ...h.target, tabId: undefined })
+      expect(h.registry.dispatch({ ...gesture, code: 'Equal' }, context, consume).status).toBe('blocked')
+      h.sidebar.commandTarget.mockReturnValue(undefined)
+      expect(h.registry.dispatch({ ...gesture, code: 'Equal' }, context, consume).status).toBe('blocked')
+    } finally { await h.fiber.dispose() }
   })
 
   it('publishes the macOS Web Browser default', async () => {

@@ -14,7 +14,7 @@ import { zh } from '../src/client/locales.ts'
 import { browserAddressCheckpoint, type BrowserTabState } from '../src/client/browser/BrowserPersistence.ts'
 import type { BrowserPageFactory, BrowserPageOptions } from '../src/client/browser/BrowserPage.ts'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { emptyBrowserFrame, type BrowserFrameState } from '../src/client/browser/BrowserFrame.ts'
+import { emptyBrowserFrame, clampBrowserZoom, type BrowserFrameState } from '../src/client/browser/BrowserFrame.ts'
 
 const SESSION = 'session' as SessionId
 const TAB = 'tab' as TabId
@@ -87,6 +87,36 @@ afterEach(async () => {
 })
 
 describe('BrowserBody', () => {
+  it('shows page zoom controls only for providers that support zoom', () => {
+    const plain = mountBrowser()
+    expect(plain.view.queryByRole('button', { name: zh['zoom.in'] })).toBeNull()
+
+    const frames = createSnapshotStore<BrowserFrameState>({ ...emptyBrowserFrame(), zoomFactor: 1 })
+    const setFactor = vi.fn((factor: number) => {
+      frames.set({ ...frames.getSnapshot(), zoomFactor: clampBrowserZoom(factor) })
+    })
+    const mounted = mountBrowser(undefined, { createPage: () => ({
+      frame: { getSnapshot: () => frames.getSnapshot(), subscribe: listener => frames.subscribe(listener),
+        loadUrl: vi.fn(), goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), dispose: async () => {}, zoom: { setFactor } },
+      presentation: { mount: () => () => {}, dispose: () => {} },
+    }) })
+    expect(mounted.view.getByText('100%')).toBeDefined()
+    const out = mounted.view.getByRole('button', { name: zh['zoom.out'] })
+    const into = mounted.view.getByRole('button', { name: zh['zoom.in'] })
+    const reset = mounted.view.getByRole('button', { name: zh['zoom.reset'] })
+    fireEvent.click(into)
+    expect(mounted.view.getByText('110%')).toBeDefined()
+    fireEvent.click(out)
+    expect(mounted.view.getByText('100%')).toBeDefined()
+    fireEvent.click(into)
+    fireEvent.click(reset)
+    expect(mounted.view.getByText('100%')).toBeDefined()
+    act(() => { frames.set({ ...frames.getSnapshot(), zoomFactor: 3 }) })
+    expect(into).toHaveProperty('disabled', true)
+    act(() => { frames.set({ ...frames.getSnapshot(), zoomFactor: 0.5 }) })
+    expect(out).toHaveProperty('disabled', true)
+  })
+
   it('displays the effective browser refresh accelerator', () => {
     const mounted = mountBrowser(undefined, { refreshShortcut: { id: 'page.refresh' as never,
       label: 'Refresh', aliases: [], binding: null, keys: ['Ctrl', 'R'], aria: 'Control+R',

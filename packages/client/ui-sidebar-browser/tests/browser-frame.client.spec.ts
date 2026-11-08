@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { BROWSER_ZOOM, clampBrowserZoom, savedBrowserZoom, steppedBrowserZoom } from '../src/client/browser/BrowserFrame.ts'
 import { IframeImpl } from '../src/client/browser/IframeImpl.ts'
 import { IframePresentation } from '../src/client/view/IframePresentation.ts'
 
@@ -6,6 +7,30 @@ const frames: IframeImpl[] = []
 
 afterEach(async () => {
   await Promise.all(frames.splice(0).map(frame => frame.dispose()))
+})
+
+describe('browser zoom factors', () => {
+  it('clamps requests to the supported range and centesimal precision', () => {
+    expect(clampBrowserZoom(0.1)).toBe(BROWSER_ZOOM.minimum)
+    expect(clampBrowserZoom(5)).toBe(BROWSER_ZOOM.maximum)
+    expect(clampBrowserZoom(1.234)).toBe(1.23)
+    expect(clampBrowserZoom(1)).toBe(1)
+  })
+
+  it('steps without floating-point drift and stops at the bounds', () => {
+    expect(steppedBrowserZoom(0.7, 1)).toBe(0.8)
+    expect(steppedBrowserZoom(1, -1)).toBe(0.9)
+    expect(steppedBrowserZoom(BROWSER_ZOOM.minimum, -1)).toBe(BROWSER_ZOOM.minimum)
+    expect(steppedBrowserZoom(BROWSER_ZOOM.maximum, 1)).toBe(BROWSER_ZOOM.maximum)
+  })
+
+  it('accepts only a finite saved factor and clamps it', () => {
+    expect(savedBrowserZoom(undefined)).toBe(BROWSER_ZOOM.neutral)
+    expect(savedBrowserZoom(Number.NaN)).toBe(BROWSER_ZOOM.neutral)
+    expect(savedBrowserZoom(Number.POSITIVE_INFINITY)).toBe(BROWSER_ZOOM.neutral)
+    expect(savedBrowserZoom(2.5)).toBe(2.5)
+    expect(savedBrowserZoom(99)).toBe(BROWSER_ZOOM.maximum)
+  })
 })
 
 describe('IframeImpl', () => {
@@ -19,6 +44,7 @@ describe('IframeImpl', () => {
     try {
       frame.handleLoaded(0)
       expect(frame.getSnapshot().address).toBe('empty')
+      expect(frame.getSnapshot().zoomFactor).toBeUndefined()
       frame.sandbox.setEnabled(false)
       frame.sandbox.setEnabled(false)
       expect(frame.getSnapshot().sandboxEnabled).toBe(false)

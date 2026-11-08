@@ -15,6 +15,7 @@ export interface WebviewElement extends HTMLElement {
   goForward(): void
   reload(): void
   isLoading(): boolean
+  setZoomFactor(factor: number): void
 }
 
 /** Physical attachment notifications; hiding a retained Sidebar body emits neither. */

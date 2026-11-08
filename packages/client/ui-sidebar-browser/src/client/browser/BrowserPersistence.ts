@@ -21,6 +21,8 @@ export interface BrowserTabState {
   readonly request: { readonly revision: number; readonly target: BrowserTarget } | undefined
   readonly navigation: BrowserNavigationStatus
   readonly failure: BrowserFailure | undefined
+  /** Page-zoom factor; absent in records written before zoom existed. */
+  readonly zoom?: number
 }
 
 /**
@@ -36,9 +38,23 @@ export function currentBrowserTarget(state: BrowserTabState | undefined): Browse
  * Checkpoint an observed address without serializing native history.
  * @param target - current address.
  * @param revision - navigation generation.
+ * @param zoom - page-zoom factor to retain with the address.
  * @returns an address-only checkpoint.
  */
-export function browserAddressCheckpoint(target: BrowserTarget, revision: number): BrowserTabState {
+export function browserAddressCheckpoint(target: BrowserTarget, revision: number, zoom?: number): BrowserTabState {
   return { entries: [target], index: 0, request: { target, revision },
-    navigation: { status: 'known', revision }, failure: undefined }
+    navigation: { status: 'known', revision }, failure: undefined, ...zoom === undefined ? {} : { zoom } }
+}
+
+/**
+ * Checkpoint a zoom change without disturbing a saved address.
+ * @param target - saved address, when the tab has one.
+ * @param revision - navigation generation.
+ * @param zoom - page-zoom factor to retain.
+ * @returns a checkpoint carrying the factor.
+ */
+export function browserZoomCheckpoint(target: BrowserTarget | undefined, revision: number, zoom: number): BrowserTabState {
+  if (target !== undefined) return browserAddressCheckpoint(target, revision, zoom)
+  return { entries: [], index: -1, request: undefined,
+    navigation: { status: 'empty' }, failure: undefined, zoom }
 }

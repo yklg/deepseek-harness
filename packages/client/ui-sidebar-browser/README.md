@@ -46,6 +46,8 @@ The `browser.new` command opens a separate Browser page in the focused dock pane
 
 The toolbar provides Back, Forward, Reload, Go, and Open in system browser. Web also offers a per-tab sandbox toggle; disabling it is temporary and displays an amber warning with neutral text. Desktop shows the observed page title. After a restart, Browser shows the saved title and URL; Restore or Reload opens that address only when requested.
 
+Desktop also offers embedded-page zoom: the toolbar shows Zoom out, the current percentage, and Zoom in, and clicking the percentage resets to 100%. The range is 50–300% in 10% steps, the page layout scales while the application stays fixed, and the factor persists with the tab's saved navigation state. The commands are bound to Cmd+Option+=, Cmd+Option+-, and Cmd+Option+0 on macOS (Ctrl+Alt on Windows and Linux) because the application already owns primary+= and primary+- for its font size. Web has no page-zoom control and omits this group.
+
 -----
 
 <a id="understand-the-implementation"></a>
@@ -105,7 +107,8 @@ The isolation policy deliberately gives up some browser compatibility:
 - In Web, a popup that escapes the sandbox retains its opener and can use that chain to navigate the top-level application. Desktop handles popup creation separately.
 - A later iframe load reveals that navigation occurred but not the new cross-origin URL. History API and fragment changes may remain invisible; Web Back and Forward are unavailable after the state becomes unknown.
 - Browsers conceal many iframe failures for security: DNS, TLS, mixed-content, CSP, and `X-Frame-Options` failures may emit `load` or no actionable event instead of `error`. The load-failure notice is best-effort.
-- Saved title and URL survive reloads and plugin unload while the tab remains in Sidebar's layout. Closing the tab removes its checkpoint. Restart restoration does not recover page memory, unsaved forms or Chromium's history stack.
+- Saved title and URL survive reloads and plugin unload while the tab remains in Sidebar's layout. Closing the tab removes its checkpoint. Restart restoration does not recover page memory, unsaved forms or Chromium's history stack. The saved zoom factor restores with the address.
+- Page zoom is Desktop-only; Web keeps the host application's zoom. Desktop zoom shortcuts are host-page key events, so while keyboard focus is inside the embedded page they do not reach the application — use the toolbar controls there. Reopening a tab reasserts its saved factor, which is the last one applied to a shared partition.
 - Local files are rejected and remain owned by Document Preview.
 - Desktop shares process-local storage partitions by canonical workspace CWD; Sessions without a resolved Workspace are isolated separately. Cookies and Web storage do not survive application restart. Guest permissions, downloads and native popups are denied; approved HTTP(S) popup requests open Sidebar tabs. Host-address filtering is not a general private-network or DNS-rebinding firewall.
 

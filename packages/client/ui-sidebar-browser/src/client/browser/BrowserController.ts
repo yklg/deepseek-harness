@@ -3,6 +3,7 @@ import { createSnapshotStore, type BoundActions, type SnapshotStore } from '@dee
 import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { BrowserFrameState } from './BrowserFrame.ts'
+import { steppedBrowserZoom } from './BrowserFrame.ts'
 import type { BrowserPage, BrowserPageFactory } from './BrowserPage.ts'
 import { currentBrowserTarget, type BrowserTabState } from './BrowserPersistence.ts'
 import type { BrowserStore } from './store.ts'
@@ -133,6 +134,13 @@ export class BrowserController implements HostObservable<BrowserControllerState>
     if (sandbox !== undefined) this.command(() => { sandbox.setEnabled(enabled) })
   }
 
+  /** Increase the embedded page zoom where the carrier supports it. */
+  zoomIn(): void { this.zoomBy(1) }
+  /** Decrease the embedded page zoom where the carrier supports it. */
+  zoomOut(): void { this.zoomBy(-1) }
+  /** Restore the embedded page zoom to neutral where the carrier supports it. */
+  resetZoom(): void { this.zoomBy(0) }
+
   /**
    * Redirect future checkpoint writes to a replacement Session binding.
    * @param actions - replacement persistence writer.
@@ -158,6 +166,13 @@ export class BrowserController implements HostObservable<BrowserControllerState>
 
   private addressFailed(reason: BrowserAddressFailure): void {
     this.store.set({ ...this.store.getSnapshot(), addressFailure: reason })
+  }
+
+  private zoomBy(direction: -1 | 0 | 1): void {
+    const current = this.store.getSnapshot().frame.zoomFactor
+    const zoom = this.page.frame.zoom
+    if (current === undefined || zoom === undefined) return
+    zoom.setFactor(direction === 0 ? 1 : steppedBrowserZoom(current, direction))
   }
 
   private command(run: () => void): void {
@@ -202,6 +217,12 @@ export interface BrowserInjected {
   reload(tabId: TabId): void
   /** @param tabId - owning tab. @param enabled - provider's optional sandbox control. */
   setSandbox(tabId: TabId, enabled: boolean): void
+  /** @param tabId - owning tab. */
+  zoomIn(tabId: TabId): void
+  /** @param tabId - owning tab. */
+  zoomOut(tabId: TabId): void
+  /** @param tabId - owning tab. */
+  resetZoom(tabId: TabId): void
 }
 
 /**
@@ -263,5 +284,8 @@ export function createBrowserControllers(actions: BoundActions<BrowserStore>, cr
     goForward: (id) => { controller(id)?.goForward() },
     reload: (id) => { controller(id)?.reload() },
     setSandbox: (id, enabled) => { controller(id)?.setSandbox(enabled) },
+    zoomIn: (id) => { controller(id)?.zoomIn() },
+    zoomOut: (id) => { controller(id)?.zoomOut() },
+    resetZoom: (id) => { controller(id)?.resetZoom() },
   }
 }

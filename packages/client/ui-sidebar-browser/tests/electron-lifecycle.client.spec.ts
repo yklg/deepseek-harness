@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import type { DesktopBrowserReservation } from '../src/types.ts'
+import { browserAddressCheckpoint } from '../src/client/browser/BrowserPersistence.ts'
 import { electronFixture } from './electron-harness.client.ts'
 
 const target = { kind: 'https' as const, url: 'https://example.test/', title: 'Example' }
@@ -13,6 +14,71 @@ function fixture() {
 afterEach(async () => {
   for (const h of fixtures.splice(0)) await h.dispose()
   vi.restoreAllMocks()
+})
+
+it('retains page zoom across navigation, clamping and guest recreation', async () => {
+  const h = electronFixture({ ...browserAddressCheckpoint(target, 1), zoom: 1.5 })
+  expect(h.frame.getSnapshot().zoomFactor).toBe(1.5)
+  h.mount()
+  h.frame.loadUrl(target)
+  const first = await h.guest()
+  expect(first.setZoomFactor).not.toHaveBeenCalled()
+  first.emit('dom-ready')
+  expect(first.setZoomFactor).toHaveBeenLastCalledWith(1.5)
+  first.state.url = target.url
+  first.emit('did-navigate')
+  expect(first.setZoomFactor).toHaveBeenLastCalledWith(1.5)
+
+  h.frame.zoom!.setFactor(2.5)
+  expect(h.frame.getSnapshot().zoomFactor).toBe(2.5)
+  expect(first.setZoomFactor).toHaveBeenLastCalledWith(2.5)
+  expect(h.persist).toHaveBeenLastCalledWith(expect.objectContaining({
+    zoom: 2.5, entries: [expect.objectContaining({ url: target.url })],
+  }))
+  h.frame.zoom!.setFactor(9)
+  expect(h.frame.getSnapshot().zoomFactor).toBe(3)
+  const calls = first.setZoomFactor.mock.calls.length
+  h.frame.zoom!.setFactor(3)
+  expect(first.setZoomFactor).toHaveBeenCalledTimes(calls)
+
+  first.state.url = 'https://other.example/'
+  first.emit('did-navigate')
+  expect(first.setZoomFactor).toHaveBeenLastCalledWith(3)
+  first.emit('render-process-gone')
+  h.frame.reload()
+  const second = await h.guest()
+  second.emit('dom-ready')
+  expect(second.setZoomFactor).toHaveBeenLastCalledWith(3)
+  await h.frame.dispose()
+  h.frame.zoom!.setFactor(1)
+  expect(second.setZoomFactor).toHaveBeenLastCalledWith(3)
+})
+
+it('persists a zoom chosen before the first page and applies it when the guest is ready', async () => {
+  const h = fixture()
+  h.frame.zoom!.setFactor(1.25)
+  expect(h.frame.getSnapshot().zoomFactor).toBe(1.25)
+  expect(h.persist).toHaveBeenLastCalledWith(expect.objectContaining({
+    zoom: 1.25, index: -1, navigation: { status: 'empty' },
+  }))
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  guest.emit('dom-ready')
+  expect(guest.setZoomFactor).toHaveBeenLastCalledWith(1.25)
+})
+
+it('contains a native zoom failure without failing the page', async () => {
+  const h = fixture()
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  h.mount()
+  h.frame.loadUrl(target)
+  const guest = await h.guest()
+  guest.emit('dom-ready')
+  guest.setZoomFactor.mockImplementationOnce(() => { throw new Error('zoom failed') })
+  h.frame.zoom!.setFactor(2)
+  expect(h.frame.getSnapshot()).toMatchObject({ zoomFactor: 2, error: undefined })
+  expect(error).toHaveBeenCalledWith('Desktop browser zoom failed', expect.any(Error))
 })
 
 it('waits for a mounted container and observes native history, titles and new-tab requests', async () => {

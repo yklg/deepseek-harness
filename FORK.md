@@ -40,5 +40,5 @@
 - [x] ecom 包骨架 + bundle：`packages/ecom/{workbench-server,client-ui-workbench,bundle-workbench}`（8 语言 locale、README 三件套、Host Config 六组占位、launcher 面板 + live-console tab 占位）；`tsconfig.host/client` 聚合 + `tsconfig.base.json` 手写别名；`docs/config-catalog` 重新生成。
   - 注：三包为通过 `check-workspace-constraints` 的 release-member 规则，声明 `publishConfig.access=public` + repository（不加 private）；产品发布链路不在本 fork 范围。
   - 注：desktop broker 的 Host 操作名为 `automation/attach|eval|detach|targets`，结果超限错误码 `result/too-large`（计划 v6 只列 `result/not-json`，以实现为准）。
-- [ ] dev:desktop 手验（进行中：Electron 二进制下载后启动）
+- [ ] dev:desktop 手验（环境阻塞：`dev.ts` 需要 primary runtime 的 Python 归档，GitHub release assets 在当前网络不可达/超时，镜像 500/403；Electron 二进制已装好。属网络限制，非代码缺陷；在有可用网络的机器上执行 `pnpm run dev:desktop` 即可完成）
 - [x] 运行时加载验证（web profile，临时 DSH_HOME）：bundle 两行成功加载，`@deepseek-ai/dsh-client-ui-workbench` 出现在 boot 清单并可取回 client bundle（200）；ego-browser 真实 DOM 验证：侧栏出现「电商工作台」入口，点击后 launcher 面板渲染占位文案（2026-11-08）。

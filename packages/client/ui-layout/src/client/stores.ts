@@ -9,6 +9,59 @@ import {
   SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, SIDEBAR_DRAWER_BREAKPOINT, SIDEBAR_MAX, SIDEBAR_MIN,
 } from './columns.ts'
 
+/** Storage port for the browser-rail width preference; the browser localStorage satisfies it. */
+export interface LayoutStorage {
+  /** @param key - preference key supplied by this package. @returns raw stored value or null. */
+  getItem(key: string): string | null
+  /** @param key - preference key supplied by this package. @param value - serialized width in px. */
+  setItem(key: string, value: string): void
+}
+
+/** localStorage key holding the browser rail's last dragged width, in px. */
+export const LAYOUT_RIGHTBAR_STORAGE_KEY = 'dsh.layout.rightbar'
+
+/** Upper bound accepted from storage; the frame solve still clamps to the current viewport. */
+const MAX_PERSISTED_RIGHTBAR = 10_000
+
+/**
+ * Read the optional storage port.
+ * @returns the browser localStorage, or null when the environment prevents access.
+ */
+function defaultLayoutStorage(): LayoutStorage | null {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Read the persisted browser-rail width.
+ * @param storage - layout storage port, or null when persistence is disabled.
+ * @returns the stored width clamped to the rail's floor, or null without a usable value.
+ */
+function readPersistedRightbar(storage: LayoutStorage | null): number | null {
+  if (storage === null) return null
+  try {
+    const raw = storage.getItem(LAYOUT_RIGHTBAR_STORAGE_KEY)
+    if (raw === null) return null
+    const width = Number(raw)
+    if (!Number.isFinite(width) || width <= 0) return null
+    return clampWidth(width, RIGHTBAR_MIN, MAX_PERSISTED_RIGHTBAR)
+  } catch {
+    return null
+  }
+}
+
+/** Options for {@link createLayoutStore}. */
+export interface LayoutStoreOptions {
+  /**
+   * Preference storage; defaults to the browser localStorage.
+   * Pass null to keep the store fully in memory (tests, restricted environments).
+   */
+  readonly storage?: LayoutStorage | null
+}
+
 /**
  * Transient layout preferences. Responsive concessions never rewrite widths;
  * the right panel's expanded state belongs to its occupant.
@@ -69,13 +122,26 @@ type LayoutActions = {
 /**
  * Create the layout panel store handle. For the sidebar the preference IS the
  * width, so closing it forgets its drag width — reopening restores the contract
- * default. The right panel initializes at 45% of the frame on first opening
- * and keeps that px preference across resizes and close. Drag writes clamp to
- * the current frame's range. Narrow sidebar toggles change only the expansion
- * override; opening the right panel clears that override.
+ * default. The browser rail initializes from the persisted drag width (when
+ * the storage port has one) or at 45% of the frame on first opening, and keeps
+ * that px preference across resizes and close. Drag writes clamp to the current
+ * frame's range and persist through the storage port. Narrow sidebar toggles
+ * change only the expansion override; opening the right panel clears that
+ * override.
+ * @param options - storage port override; an explicit null keeps preferences in memory.
  * @returns the store handle (spec + type + identity + factory in one).
  */
-export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions>  {
+export function createLayoutStore(options: LayoutStoreOptions = {}): EngineStoreHandle<LayoutState, LayoutActions>  {
+  const storage = options.storage === undefined ? defaultLayoutStorage() : options.storage
+  const persistedRightbar = readPersistedRightbar(storage)
+  const persistRightbar = (width: number): void => {
+    if (storage === null) return
+    try {
+      storage.setItem(LAYOUT_RIGHTBAR_STORAGE_KEY, String(width))
+    } catch {
+      // A blocked or full storage degrades to an in-memory preference.
+    }
+  }
   const handle = defineStore({
     init: (): LayoutState => ({
       panelInfo: { activePanelId: null },
@@ -83,7 +149,7 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         sidebar: SIDEBAR_DEFAULT,
         viewportWidth: window.innerWidth,
         narrowExpanded: false,
-        rightbar: null,
+        rightbar: persistedRightbar,
         rightbarShown: false,
         rightbarTrack: false,
         rightbarFullscreen: false,
@@ -124,7 +190,9 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       setRightbar: (d, px: number) => {
         d.layoutInfo.rightbarInstant = false
-        d.layoutInfo.rightbar = clampWidth(px, RIGHTBAR_MIN, Math.max(RIGHTBAR_MIN, d.layoutInfo.viewportWidth * RIGHTBAR_MAX_RATIO))
+        const width = clampWidth(px, RIGHTBAR_MIN, Math.max(RIGHTBAR_MIN, d.layoutInfo.viewportWidth * RIGHTBAR_MAX_RATIO))
+        d.layoutInfo.rightbar = width
+        persistRightbar(width)
       },
       openRightbar: (d, track: boolean, fullscreen: boolean) => {
         if (!d.layoutInfo.rightbarShown || d.layoutInfo.rightbarTrack !== track || d.layoutInfo.rightbarFullscreen !== fullscreen) {

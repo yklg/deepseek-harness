@@ -1,15 +1,15 @@
 /**
  * Three-column shell frame, registered into the built-in 'root' slot (the web
- * shell renders only 'root'). Owns the grid tracks (sidebar | center |
- * rightbar), the drag handles (pointer capture + rAF throttle), the column
- * solve (columns.ts), and the child-slot render decisions: the sidebar slot
+ * shell renders only 'root'). Owns the grid tracks (sidebar | rightbar | center),
+ * the drag handles (pointer capture + rAF throttle), the column solve
+ * (columns.ts), and the child-slot render decisions: the sidebar slot
  * receives live parameters from that solve. The root-scoped main slot selects
  * the Conversation or a global panel. Each column occupant owns its Session
  * binding and reports the geometry it needs.
  *
- * The right column is a track, not a box: its occupant draws its panel anchored
- * to the frame's right edge at the resolved normal width, and the
- * track only decides whether the centre makes room for it. The occupant reports
+ * The middle column is a browser rail track, not a box: its occupant draws its
+ * panel anchored to the column's left edge at the track width, and the track
+ * decides how much room the conversation column keeps. The occupant reports
  * shown/track/fullscreen through `ctx.layout`; fullscreen keeps the reported
  * track but hides the outer resize handle. Everything arrives through the framework
  * shares — zero cordis or framework imports, zero self-made hooks.
@@ -51,9 +51,10 @@ function MainPanel({ usePanelInfo, renderSlot }: Pick<PropsRuntime<'root'>, 'use
 }
 
 /**
- * Right column grid item. Zero-width unless the occupant asked for a track; the
- * occupant's panel is positioned against the column's right edge, which never
- * moves, so it can hang over the centre when there is no track.
+ * Browser rail grid item, between the sidebar and the conversation. Zero-width
+ * unless the occupant asked for a track; the occupant's panel is positioned
+ * against the column's left edge (the sidebar boundary), which never moves, so
+ * the panel's width tracks this column's width.
  */
 function RightbarColumn(props: { children?: ReactNode; inert: boolean }) {
   return <div className={css.rightbarCol} data-rightbar-col {...{ inert: props.inert ? '' : undefined }}>{props.children}</div>
@@ -256,16 +257,19 @@ export function AppFrame({
   }, [actions])
   const onRightbarStart = useCallback(() => { rightbarBase.current = rightbarWidth.current; setDragging(true) }, [])
   const onRightbarDrag = useCallback((dx: number) => {
-    actions.setRightbar(rightbarBase.current - dx)
+    // The browser rail sits left of the conversation: dragging the boundary to
+    // the right widens the rail, so the pointer delta adds to the drag base.
+    actions.setRightbar(rightbarBase.current + dx)
   }, [actions])
   const productTitle = process.env.DSH_CLIENT_TITLE ?? t('brand.localBuild')
-  // The rendered template lets the grid solve the squeeze natively: the centre
-  // declares its protected minimum and the right column bids up to the clamped
-  // preference, so a window resize lands in the same layout pass as the frame
-  // edge. The JS solve lags the viewport by a ResizeObserver + rAF frame; when
-  // it priced the squeeze itself, the centre column absorbed each width change
-  // whole and was corrected two frames later — visible jitter. cols keeps only
-  // the discrete decisions (track present, collapse state) and the drag base.
+  // The rendered template lets the grid solve the squeeze natively: the
+  // conversation column declares its protected minimum and the browser rail
+  // bids up to the clamped preference, so a window resize lands in the same
+  // layout pass as the frame edge. The JS solve lags the viewport by a
+  // ResizeObserver + rAF frame; when it priced the squeeze itself, the center
+  // column absorbed each width change whole and was corrected two frames
+  // later — visible jitter. cols keeps only the discrete decisions (track
+  // present, collapse state) and the drag base.
   const rightbarMax = cols.rightbar === 0 ? 0 : clampWidth(rightbarPreference, RIGHTBAR_MIN, viewport * RIGHTBAR_MAX_RATIO)
   const sidebarWidth = drawer
     ? Math.min(layoutInfo.sidebar || SIDEBAR_DEFAULT, Math.max(0, viewport - 48))
@@ -293,7 +297,7 @@ export function AppFrame({
         ...(windowsTitlebar
           ? { '--dsh-windows-sidebar-width': `${cols.sidebar}px` } : {}),
         gridTemplateColumns:
-          `${cols.sidebar}px minmax(${cols.rightbar === 0 ? 0 : CENTER_MIN}px, 1fr) minmax(0px, ${rightbarMax}px)`,
+          `${cols.sidebar}px minmax(0px, ${rightbarMax}px) minmax(${cols.rightbar === 0 ? 0 : CENTER_MIN}px, 1fr)`,
       }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-sidebar-drawer={drawer || undefined}
@@ -317,10 +321,10 @@ export function AppFrame({
         {sidebar}
       </div>
       <>
-        <CenterColumn inert={drawerOpen}>{main}</CenterColumn>
         <RightbarColumn inert={drawerOpen}>
           {renderSlot('rightbar', { width: normal.rightbar, viewportWidth: viewport, canShow: normal.rightbar > 0 })}
         </RightbarColumn>
+        <CenterColumn inert={drawerOpen}>{main}</CenterColumn>
       </>
       <div className={css.bottomRow} data-shell-bottom {...{ inert: drawerOpen ? '' : undefined }}>
         {renderSlot('shell.bottom', {})}
@@ -336,7 +340,7 @@ export function AppFrame({
       {/* The collapsed rail is fixed-width: no resize handle while closed. */}
       {!drawer && !centeredSidebar && !sidebarCollapsed && <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />}
       {layoutInfo.rightbarShown && !layoutInfo.rightbarFullscreen && normal.rightbar > 0 && (
-        <DragHandle side="rightbar" left={viewport - normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
+        <DragHandle side="rightbar" left={cols.sidebar + normal.rightbar} onStart={onRightbarStart} onDrag={onRightbarDrag} onEnd={onDragEnd} />
       )}
     </div>
   )

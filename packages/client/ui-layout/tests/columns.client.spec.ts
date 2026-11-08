@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { clampWidth, computeColumns } from '../src/client/columns.ts'
+import fc from 'fast-check'
+import {
+  CENTER_MIN, clampWidth, computeColumns, RIGHTBAR_MAX_RATIO, RIGHTBAR_MIN,
+} from '../src/client/columns.ts'
 
 describe('clampWidth', () => {
   it('clamps into the range and rounds', () => {
@@ -25,16 +28,16 @@ describe('computeColumns', () => {
 
   it('clamps sidebar preferences and limits the right panel to 70% of the frame', () => {
     expect(computeColumns(3000, 9999, 9999)).toEqual({ sidebar: 420, center: 480, rightbar: 2100 })
-    expect(computeColumns(1920, 1, 1)).toEqual({ sidebar: 264, center: 1356, rightbar: 300 })
+    expect(computeColumns(1920, 1, 1)).toEqual({ sidebar: 264, center: 1236, rightbar: 420 })
   })
 
   it.each([
     [1300, 280, 620, 400],
     [1100, 280, 420, 400],
-    [1120, 420, 300, 400],
+    [1120, 420, 0, 700],
     [1119, 420, 0, 699],
     [1024, 420, 0, 604],
-    [756, 0, 300, 400],
+    [756, 0, 0, 700],
     [755, 0, 0, 699],
     [455, 0, 0, 399],
     [20, 0, 0, 0],
@@ -54,5 +57,36 @@ describe('computeColumns', () => {
   it('leaves a closed right track closed when the frame widens', () => {
     expect(computeColumns(755, 0, 0).rightbar).toBe(0)
     expect(computeColumns(1920, 0, 0).rightbar).toBe(0)
+  })
+
+  it('keeps the conversation minimum while the browser rail is open', () => {
+    // 1200 - 280 sidebar - 400 conversation = 520 available for the rail.
+    expect(computeColumns(1200, 280, 864)).toEqual({ sidebar: 280, center: 400, rightbar: 520 })
+    // One pixel below the two minimums drops the rail track entirely.
+    expect(computeColumns(1099, 280, 864).rightbar).toBe(0)
+    expect(computeColumns(1099, 280, 864).center).toBe(819)
+  })
+
+  it('holds the rail floor and the conversation minimum under generated widths', () => {
+    fc.assert(fc.property(
+      fc.integer({ min: 0, max: 4000 }),
+      fc.integer({ min: 0, max: 4000 }),
+      fc.integer({ min: 0, max: 4000 }),
+      (viewport, sidebar, rightbar) => {
+        const solved = computeColumns(viewport, sidebar, rightbar)
+        // Below the collapsed rail's own width the frame cannot satisfy the sum.
+        if (viewport >= solved.sidebar) {
+          expect(solved.center + solved.rightbar + solved.sidebar).toBe(viewport)
+        }
+        expect(solved.sidebar).toBeGreaterThanOrEqual(0)
+        expect(solved.center).toBeGreaterThanOrEqual(0)
+        expect(solved.rightbar).toBeGreaterThanOrEqual(0)
+        if (solved.rightbar > 0) {
+          expect(solved.rightbar).toBeGreaterThanOrEqual(RIGHTBAR_MIN)
+          expect(solved.center).toBeGreaterThanOrEqual(CENTER_MIN)
+          expect(solved.rightbar).toBeLessThanOrEqual(viewport * RIGHTBAR_MAX_RATIO)
+        }
+      },
+    ))
   })
 })

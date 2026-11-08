@@ -65,7 +65,7 @@ function resize(width: number): void {
 
 function mountFrame(windowWidth = frameWidth, content?: AppFrameProps['renderSlot']) {
   vi.stubGlobal('innerWidth', windowWidth)
-  const instance = createLayoutStore().create()
+  const instance = createLayoutStore({ storage: null }).create()
   const slotCalls: { key: string; props: object; options: RenderOpts | undefined }[] = []
   const renderSlot: AppFrameProps['renderSlot'] = (key, owner, options) => {
     slotCalls.push({ key, props: owner, options })
@@ -118,13 +118,14 @@ function mountFrame(windowWidth = frameWidth, content?: AppFrameProps['renderSlo
 }
 
 /* The template delegates the squeeze to the grid (jsdom does no layout, so
-   specs read the specified tracks): [sidebar px, rightbar growth limit].
-   The centre's protected minimum must accompany an open right track. */
+   specs read the specified tracks): [sidebar px, rightbar growth limit, with the
+   conversation minimum]. The conversation's protected minimum must accompany
+   an open browser rail track. */
 function tracks(frame: HTMLElement): number[] {
-  const match = /^([\d.]+)px minmax\((0|400)px, 1fr\) minmax\(0px, ([\d.]+)px\)$/.exec(frame.style.gridTemplateColumns)
+  const match = /^([\d.]+)px minmax\(0px, ([\d.]+)px\) minmax\((0|400)px, 1fr\)$/.exec(frame.style.gridTemplateColumns)
   if (match === null) throw new Error(`unexpected template: ${frame.style.gridTemplateColumns}`)
-  const rightbar = Number(match[3])
-  if ((match[2] === '400') !== (rightbar > 0)) throw new Error(`centre minimum out of step: ${frame.style.gridTemplateColumns}`)
+  const rightbar = Number(match[2])
+  if ((match[3] === '400') !== (rightbar > 0)) throw new Error(`conversation minimum out of step: ${frame.style.gridTemplateColumns}`)
   return [Number(match[1]), rightbar]
 }
 
@@ -341,19 +342,20 @@ describe('AppFrame normal width concessions', () => {
     expect(rightOwner().width).toBe(450)
   })
 
-  it('shrinks the right panel to 300px, drops its track, and only then squeezes center', () => {
+  it('shrinks the right panel, drops its track, and only then squeezes the conversation', () => {
     const { frame, instance, rightOwner } = mountFrame()
     act(() => { instance.actions.setSidebar(420); instance.actions.openRightbar(true, false) })
-    resize(1200)
+    resize(1920)
     // The template carries the ratio-clamped preference; the panel (rightOwner
     // width) reports the resolved squeeze.
-    expect(tracks(frame)).toEqual([420, 840])
-    expect(rightOwner()).toEqual({ width: 380, viewportWidth: 1200, canShow: true })
-    resize(1120)
-    expect(tracks(frame)).toEqual([420, 784])
-    resize(1119)
+    expect(tracks(frame)).toEqual([420, 864])
+    expect(rightOwner()).toEqual({ width: 864, viewportWidth: 1920, canShow: true })
+    resize(1400)
+    expect(tracks(frame)).toEqual([420, 864])
+    expect(rightOwner()).toEqual({ width: 580, viewportWidth: 1400, canShow: true })
+    resize(1219)
     expect(tracks(frame)).toEqual([420, 0])
-    expect(rightOwner()).toEqual({ width: 0, viewportWidth: 1119, canShow: false })
+    expect(rightOwner()).toEqual({ width: 0, viewportWidth: 1219, canShow: false })
     expect(frame.querySelector('[data-side="rightbar"]')).toBeNull()
     expect(instance.getSnapshot().layoutInfo).toMatchObject({ rightbarShown: true, rightbar: 864 })
     act(() => { instance.actions.closeRightbar() })
@@ -364,18 +366,18 @@ describe('AppFrame normal width concessions', () => {
   })
 
   it('uses the post-collapse left rail to permit a narrow first opening', () => {
-    frameWidth = 800
+    frameWidth = 1000
     const { frame, instance, rightOwner } = mountFrame()
     act(() => { instance.actions.toggleSidebar() })
     expect(tracks(frame)).toEqual([280, 0])
-    expect(rightOwner()).toEqual({ width: 344, viewportWidth: 800, canShow: true })
+    expect(rightOwner()).toEqual({ width: 450, viewportWidth: 1000, canShow: true })
     act(() => { instance.actions.openRightbar(true, false) })
-    expect(tracks(frame)).toEqual([56, 360])
-    expect(instance.getSnapshot().layoutInfo).toMatchObject({ narrowExpanded: false, rightbar: 360 })
+    expect(tracks(frame)).toEqual([56, 450])
+    expect(instance.getSnapshot().layoutInfo).toMatchObject({ narrowExpanded: false, rightbar: 450 })
     expect(rightOwner().canShow).toBe(true)
   })
 
-  it.each([[768, 312, true], [767, 345, true], [700, 300, true], [699, 0, false]] as const)('reports eligibility at %ipx', (width, rightbar, canShow) => {
+  it.each([[1000, 450, true], [900, 420, true], [876, 420, true], [875, 0, false], [768, 0, false], [700, 0, false]] as const)('reports rail eligibility at %ipx', (width, rightbar, canShow) => {
     frameWidth = width
     const { instance, rightOwner } = mountFrame()
     act(() => { instance.actions.toggleSidebar() })
@@ -539,7 +541,7 @@ describe('AppFrame right panel presentation', () => {
     const { frame, instance, rightOwner } = mountFrame()
     act(() => { instance.actions.openRightbar(true, false) })
     expect(tracks(frame)).toEqual([280, 864])
-    expect(handleFor(frame, 'rightbar').style.left).toBe('1056px')
+    expect(handleFor(frame, 'rightbar').style.left).toBe('1144px')
     act(() => { instance.actions.openRightbar(true, true) })
     expect(tracks(frame)).toEqual([280, 864])
     expect(rightOwner().width).toBe(864)
@@ -547,7 +549,7 @@ describe('AppFrame right panel presentation', () => {
     expect(frame.querySelector('[data-side="rightbar"]')).toBeNull()
     act(() => { instance.actions.openRightbar(true, false) })
     expect(tracks(frame)).toEqual([280, 864])
-    expect(handleFor(frame, 'rightbar').style.left).toBe('1056px')
+    expect(handleFor(frame, 'rightbar').style.left).toBe('1144px')
     expect(frame.dataset.rightbarFullscreen).toBeUndefined()
     act(() => { instance.actions.closeRightbar() })
     expect(tracks(frame)).toEqual([280, 0])
@@ -584,9 +586,9 @@ describe('AppFrame right panel presentation', () => {
     resize(1100)
     expect(tracks(frame)).toEqual([280, 0])
     expect(rightOwner().width).toBe(420)
-    drag(handleFor(frame, 'rightbar'), 680, 690)
-    expect(instance.getSnapshot().layoutInfo.rightbar).toBe(410)
-    expect(rightOwner().width).toBe(410)
+    drag(handleFor(frame, 'rightbar'), 700, 710)
+    expect(instance.getSnapshot().layoutInfo.rightbar).toBe(430)
+    expect(rightOwner().width).toBe(420)
     expect(tracks(frame)[1]).toBe(0)
   })
 })
@@ -618,24 +620,26 @@ describe('AppFrame pointer resizing', () => {
     const handle = handleFor(frame, 'rightbar')
     expect(rightOwner().width).toBe(420)
     expect(tracks(frame)[1]).toBe(770)
-    expect(handle.style.left).toBe('680px')
-    drag(handle, 680, 690)
-    expect(instance.getSnapshot().layoutInfo.rightbar).toBe(410)
-    expect(rightOwner().width).toBe(410)
-    expect(tracks(frame)[1]).toBe(410)
-    expect(handle.style.left).toBe('690px')
+    expect(handle.style.left).toBe('700px')
+    drag(handle, 700, 710)
+    expect(instance.getSnapshot().layoutInfo.rightbar).toBe(430)
+    expect(rightOwner().width).toBe(420)
+    expect(tracks(frame)[1]).toBe(430)
+    expect(handle.style.left).toBe('700px')
   })
 
-  it('widens to the 70% limit and shrinks to 300px through pointer input', () => {
+  it('widens to the 70% limit and shrinks to 420px through pointer input', () => {
     frameWidth = 3000
     const { frame, instance, rightOwner } = mountFrame()
     act(() => { instance.actions.toggleSidebar(); instance.actions.openRightbar(true, false) })
-    drag(handleFor(frame, 'rightbar'), 1650, 0)
+    // Opening at 45% of 3000 leaves 1350px for the rail; the handle sits after
+    // the 56px collapsed sidebar.
+    drag(handleFor(frame, 'rightbar'), 1406, 2156)
     expect(rightOwner().width).toBe(2100)
     expect(tracks(frame)[1]).toBe(2100)
-    drag(handleFor(frame, 'rightbar'), 900, 3000)
-    expect(rightOwner().width).toBe(300)
-    expect(tracks(frame)[1]).toBe(300)
+    drag(handleFor(frame, 'rightbar'), 2156, 476)
+    expect(rightOwner().width).toBe(420)
+    expect(tracks(frame)[1]).toBe(420)
   })
 
   it('commits the pointerup coordinate and cancels its pending animation frame', () => {

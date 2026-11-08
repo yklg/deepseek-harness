@@ -33,6 +33,12 @@
 
 :global([data-windows-titlebar]) .centerCol {
   background: var(--dsw-alias-bg-base);
+}
+
+/* The rounded top-left content corner belongs to whichever column meets the
+   sidebar: the browser rail when it holds a track, otherwise the conversation. */
+:global([data-windows-titlebar]) .frame:not([data-rightbar-collapsed]) .rightbarCol,
+:global([data-windows-titlebar]) .frame[data-rightbar-collapsed] .centerCol {
   border-radius: var(--dsh-windows-content-radius) 0 0 0;
   corner-shape: round;
 }
@@ -66,7 +72,7 @@
 }
 
 .centerCol {
-  grid-column: 2;
+  grid-column: 3;
   grid-row: 1;
   min-width: 0;
   display: flex;
@@ -271,18 +277,19 @@
 }
 
 /*
- * The right column never clips: its occupant anchors a fixed-width panel to the
- * column's right edge (the frame's edge, which never moves) and lets the track
- * decide whether the centre makes room. With no track the panel hangs over the
- * centre from a zero-width column, and while the track animates the panel stays
- * where it is. The occupant draws its own left border.
+ * The browser rail never clips: its occupant draws a panel that fills the track
+ * width, anchored to the column's left edge (the sidebar boundary, which never
+ * moves), and lets the track decide how much room the conversation keeps. The
+ * track width animation resizes the panel with the column; the occupant draws
+ * its own right border.
  */
 .rightbarCol {
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 1;
   position: relative;
   min-width: 0;
   overflow: visible;
+  background: var(--dsw-alias-bg-base);
 }
 
 .frame[data-sidebar-drawer] {

@@ -1,14 +1,17 @@
 /**
- * Normal column geometry: the right column shrinks, then loses its track,
- * before the center drops below its minimum. The sidebar never concedes here;
- * AppFrame supplies its effective preference after responsive collapse.
+ * Normal column geometry for the product layout `sidebar | rightbar | center`:
+ * the browser rail shrinks, then loses its track, before the conversation
+ * column drops below its minimum. The sidebar never concedes here; AppFrame
+ * supplies its effective preference after responsive collapse.
  */
 
 /** Resolved widths for one frame. */
 export interface Columns { sidebar: number; center: number; rightbar: number }
 
-/** Center width protected while the normal right column is open. */
+/** Conversation width protected while the normal browser rail is open. */
 export const CENTER_MIN = 400
+/** Product alias: the conversation column's protected minimum. */
+export const CHAT_MIN = CENTER_MIN
 /** Sidebar drag clamp floor. */
 export const SIDEBAR_MIN = 264
 /** Sidebar drag clamp ceiling. */
@@ -23,11 +26,13 @@ export const SIDEBAR_DRAWER_BREAKPOINT = 768
  * LG breakpoint); a manual toggle below it re-expands over the squeezed center
  * (stores.ts narrowExpanded). */
 export const SIDEBAR_AUTO_COLLAPSE = 1024
-/** Right column drag clamp floor. */
-export const RIGHTBAR_MIN = 300
-/** Maximum normal right panel width as a fraction of the frame. */
+/** Browser rail drag clamp floor. */
+export const RIGHTBAR_MIN = 420
+/** Product alias: the browser rail's protected minimum. */
+export const BROWSER_MIN = RIGHTBAR_MIN
+/** Maximum normal browser rail width as a fraction of the frame. */
 export const RIGHTBAR_MAX_RATIO = 0.7
-/** First-open right panel preference as a fraction of the frame. */
+/** First-open browser rail preference as a fraction of the frame. */
 export const RIGHTBAR_DEFAULT_RATIO = 0.45
 
 /**

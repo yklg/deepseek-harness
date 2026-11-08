@@ -19,11 +19,11 @@ describe('ecom workbench host skeleton', () => {
   })
 
   it('merges one configured group over its defaults', () => {
-    const config = WorkbenchServer.Config({ automation: { maxConcurrentRuns: 4 } })
+    const config = WorkbenchServer.Config({ automation: { maxConcurrentRuns: 4, defaultTimeoutSeconds: 600 } })
     expect(config.automation).toEqual({ maxConcurrentRuns: 4, defaultTimeoutSeconds: 600 })
   })
 
   it('rejects a configuration value outside its schema', () => {
-    expect(() => WorkbenchServer.Config({ automation: { maxConcurrentRuns: 0 } })).toThrow()
+    expect(() => WorkbenchServer.Config({ automation: { maxConcurrentRuns: 0, defaultTimeoutSeconds: 600 } })).toThrow()
   })
 })

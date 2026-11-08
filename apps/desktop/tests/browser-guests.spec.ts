@@ -41,7 +41,7 @@ type ContentsFixture = EventEmitter & {
   getURL(): string
   isDestroyed(): boolean
   executeJavaScript: ExecuteJavaScriptMock
-  close: ReturnType<typeof vi.fn>
+  close: Mock<() => void>
   setWindowOpenHandler: ReturnType<typeof vi.fn>
   send: ReturnType<typeof vi.fn>
 }
@@ -66,10 +66,23 @@ function contentsFixture(url = 'about:blank') {
   return { contents, state }
 }
 
+/**
+ * Present the public lease methods through the fixture's EventEmitter doubles;
+ * the assertions run the real implementation with only Electron replaced.
+ */
+function fixtureGuests(guests: InstanceType<typeof DesktopBrowserGuests>): GuestsFixture {
+  return {
+    acquire: (contents, workspace) => guests.acquire(contents as never, workspace as never),
+    release: (contents, id) => guests.release(contents as never, id as never),
+    clearStorage: workspace => guests.clearStorage(workspace as never),
+    bind: (window, attachInput) => guests.bind(window as never, attachInput as never),
+  }
+}
+
 function fixture() {
   const events: AutomationLifecycleEvent[] = []
   const guestOwner = new DesktopBrowserGuests(() => undefined)
-  const guests = guestOwner as GuestsFixture
+  const guests = fixtureGuests(guestOwner)
   const owner = contentsFixture('dsh-app://app/')
   const window = Object.assign(new EventEmitter(), { webContents: owner.contents, isDestroyed: () => false })
   guests.bind(window, () => () => {})

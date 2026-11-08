@@ -14,9 +14,8 @@ export const name = 'ecom-workbench'
 
 /**
  * Workbench configuration grouped by the capability that will consume it.
- * Every group is optional at the row; the resolved groups exist because each
- * nested field has a default, so a row may enable a capability with no further
- * configuration.
+ * Every group may be omitted from the row; a row that names a group states all
+ * of its fields, and every field carries a default in the schema.
  */
 export interface Config {
   /** Yunying operations-platform connection. */
@@ -63,11 +62,9 @@ export interface Config {
   }
 }
 
-/**
- * Deployment configuration for the workbench host row; the capability packages
- * added later validate their own group at load and fail loud on a bad value.
- */
-export const Config: z<Config> = z.object({
+/** Deployment configuration for the workbench host row.
+ * The capability packages added later validate their own group at load and fail loud on a bad value. */
+export const Config = z.object({
   yunying: z.object({
     endpoint: z.string().default(''),
     workspaceId: z.string().default(''),

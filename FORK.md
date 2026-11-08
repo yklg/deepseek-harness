@@ -43,6 +43,15 @@
 - [ ] dev:desktop 手验（环境阻塞：`dev.ts` 需要 primary runtime 的 Python 归档，GitHub release assets 在当前网络不可达/超时，镜像 500/403；Electron 二进制已装好。属网络限制，非代码缺陷；在有可用网络的机器上执行 `pnpm run dev:desktop` 即可完成）
 - [x] 运行时加载验证（web profile，临时 DSH_HOME）：bundle 两行成功加载，`@deepseek-ai/dsh-client-ui-workbench` 出现在 boot 清单并可取回 client bundle（200）；ego-browser 真实 DOM 验证：侧栏出现「电商工作台」入口，点击后 launcher 面板渲染占位文案（2026-11-08）。
 
+## W0 验证记录（2026-11-08）
+
+- `pnpm run build:artifacts`：8/8 gates PASS（Host bundle / client compiler / Client bundle / Web build 等）。
+- `pnpm run build:check`：host + client aggregate PASS。
+- `pnpm run test:gui`：745 files / 13107 passed / 1 skipped（首次失败为 `.dsh-bin/env.sh` 误导出 `DSH_CLIENT_COMMIT_HASH` 污染 fixture；已移除该导出并复跑全绿）。
+- 定向测试：ui-layout 142、ui-sidebar-right 323、apps/desktop broker 115、profile 迁移 5、ecom smoke 4、ui-sidebar-browser 68，全部通过。
+- 运行时加载 + DOM：临时 `DSH_HOME` 的 web profile 中加入产品 bundle 后，boot 清单含 `@deepseek-ai/dsh-client-ui-workbench/client.js`（HTTP 200），ego-browser 真实页面侧栏出现「电商工作台」，点击后 launcher 占位页渲染。
+- 未完成：`dev:desktop` 实机启动（网络无法获取 primary runtime 的 Python 归档；Electron 二进制已装）；`apps/web` e2e（`sidebar-right.e2e.ts` 旧 slide 断言）留待 W1 集成验证。
+
 ## 下一步（W1，按计划 v6）
 
 1. **Host workbench 客户端**（`packages/ecom/workbench-server`）：消费 Electron 私有通道的 `workbench-request/response` 与 `workbench-event`；封装 `automation/attach|eval|detach|targets` 为 Host 服务（origin allowlist、单 target 串行、错误码映射、断连降级）；单测用 fake 通道，不依赖 Electron。

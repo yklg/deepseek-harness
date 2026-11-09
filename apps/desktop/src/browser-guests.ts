@@ -172,7 +172,7 @@ export class DesktopBrowserGuests {
    * @param options - optional guest throttle policy received over IPC.
    * @returns opaque lease and the persistent partition approved for it.
    */
-  acquire(owner: WebContents, workspace: unknown, options: unknown = undefined): DesktopBrowserReservation {
+  acquire(owner: WebContents, workspace: unknown, options?: unknown): DesktopBrowserReservation {
     const key = assertWorkspaceKey(workspace)
     const backgroundThrottling = assertGuestOptions(options)
     const partition = this.partitionFor(key)
@@ -278,6 +278,58 @@ export class DesktopBrowserGuests {
           owner.send(DESKTOP_IPC.browserOpenRequested, request)
         }
         return { action: 'deny' }
+      })
+      // Embedded pages get browser-like page zoom while their guest has focus:
+      // primary+=/-/0 and primary+wheel, reported back to the renderer so its
+      // toolbar percentage and persisted factor stay authoritative.
+      const zoomLimits = { minimum: 0.5, maximum: 3, step: 0.1, neutral: 1 }
+      let lastWheelAt = 0
+      const publishZoom = (factor: number): void => {
+        if (attachedLease === undefined) return
+        owner.send(DESKTOP_IPC.browserZoomChanged, { lease: attachedLease, factor })
+      }
+      const setGuestZoom = (factor: number): void => {
+        const next = Math.round(Math.min(zoomLimits.maximum, Math.max(zoomLimits.minimum, factor)) * 100) / 100
+        try {
+          guest.setZoomFactor(next)
+          publishZoom(next)
+        } catch (error) {
+          console.error('Desktop guest zoom failed', error)
+        }
+      }
+      const stepGuestZoom = (direction: -1 | 0 | 1): void => {
+        try {
+          setGuestZoom(direction === 0 ? zoomLimits.neutral : guest.getZoomFactor() + direction * zoomLimits.step)
+        } catch (error) {
+          console.error('Desktop guest zoom failed', error)
+        }
+      }
+      const onBeforeInput = (event: Electron.Event, input: Electron.Input): void => {
+        if (input.type !== 'keyDown' || input.alt) return
+        const primary = process.platform === 'darwin' ? input.meta : input.control
+        if (!primary) return
+        const direction = input.key === '=' || input.key === '+' ? 1
+          : input.key === '-' || input.key === '_' ? -1
+            : input.key === '0' ? 0
+              : undefined
+        if (direction === undefined) return
+        event.preventDefault()
+        stepGuestZoom(direction)
+      }
+      const onBeforeMouse = (event: Electron.Event, mouse: Electron.MouseInputEvent): void => {
+        if (mouse.type !== 'mouseWheel' || mouse.modifiers === undefined) return
+        if (!mouse.modifiers.includes('control') && !mouse.modifiers.includes('meta')) return
+        const now = Date.now()
+        if (now - lastWheelAt < 80) return
+        lastWheelAt = now
+        event.preventDefault()
+        stepGuestZoom(((mouse as Electron.MouseWheelInputEvent).deltaY ?? 0) < 0 ? 1 : -1)
+      }
+      guest.on('before-input-event', onBeforeInput)
+      guest.on('before-mouse-event', onBeforeMouse)
+      guest.once('destroyed', () => {
+        guest.off('before-input-event', onBeforeInput)
+        guest.off('before-mouse-event', onBeforeMouse)
       })
       guest.on('will-frame-navigate', (event) => {
         if (event.isMainFrame && !this.allowedNavigation(event.url)) event.preventDefault()

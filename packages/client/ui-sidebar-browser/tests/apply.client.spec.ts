@@ -78,6 +78,7 @@ describe('ui-sidebar-browser apply', () => {
       acquire,
       release: vi.fn(async () => {}),
       onOpenRequested: vi.fn(() => () => {}),
+      onZoomChanged: vi.fn(() => () => {}),
       clearStorage: vi.fn(async () => {}),
     }
     vi.stubGlobal('dshDesktop', { protocolVersion, browser: bridge })
@@ -169,6 +170,7 @@ describe('ui-sidebar-browser apply', () => {
       acquire: vi.fn(async () => ({ lease: 'test-lease' as DesktopBrowserLeaseId, partition: 'test-partition' })),
       release: vi.fn(async () => {}),
       onOpenRequested: vi.fn(() => () => {}),
+      onZoomChanged: vi.fn(() => () => {}),
       clearStorage: vi.fn(async () => {}),
     }
     vi.stubGlobal('dshDesktop', { protocolVersion: 1, browser: bridge })

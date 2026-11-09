@@ -460,6 +460,7 @@ describe('ConsoleController zoom', () => {
   it('publishes the carrier zoom factor and forwards zoom commands', async () => {
     const { controller, surfaces } = controllerFor(async () => buyinInProbe)
     await controller.open('buyin')
+    expect(surfaces[0]?.options.initialZoom).toBe(0.8)
     surfaces[0]?.emit({ ...page('https://buyin.jinritemai.com/dashboard/live/control'), zoomFactor: 1 })
     await vi.advanceTimersByTimeAsync(0)
     expect(snapshotOf(controller).zoomFactor).toBe(1)

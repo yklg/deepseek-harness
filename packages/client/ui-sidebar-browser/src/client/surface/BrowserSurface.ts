@@ -2,7 +2,7 @@
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DesktopBrowserBridge } from '../../types.ts'
-import { BROWSER_ZOOM, steppedBrowserZoom, type BrowserFrameState } from '../browser/BrowserFrame.ts'
+import { BROWSER_ZOOM, clampBrowserZoom, steppedBrowserZoom, type BrowserFrameState } from '../browser/BrowserFrame.ts'
 import type { BrowserPage, BrowserPageOptions } from '../browser/BrowserPage.ts'
 import { parseBrowserAddress } from '../browser/url.ts'
 import { createElectronPage } from '../electron/pages.ts'
@@ -17,6 +17,8 @@ export interface BrowserSurfaceOptions {
   readonly backgroundThrottling?: boolean
   /** Application origin used by the shared address parser. */
   readonly applicationOrigin: string
+  /** Initial embedded-page zoom; defaults to the carrier's neutral factor. */
+  readonly initialZoom?: number
   /** Receives page-initiated new-window requests (target=_blank/window.open). */
   readonly openRequested?: (url: string) => void
 }
@@ -89,6 +91,10 @@ class SurfaceController implements BrowserSurface {
     this.unsubscribe = page.frame.subscribe(() => {
       if (!this.disposed) this.store.set(page.frame.getSnapshot())
     })
+    if (options.initialZoom !== undefined && page.frame.zoom !== undefined) {
+      page.frame.zoom.setFactor(clampBrowserZoom(options.initialZoom))
+      this.store.set(page.frame.getSnapshot())
+    }
   }
 
   /** @returns immutable carrier-neutral surface state. */

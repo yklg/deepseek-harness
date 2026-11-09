@@ -15,7 +15,7 @@ it('clears a failed load when the main page retries without a toolbar command', 
   })
   const bridge: DesktopBrowserBridge = {
     acquire: vi.fn(async () => ({ lease: 'lease' as DesktopBrowserLeaseId, partition: 'partition' })),
-    release: vi.fn(async () => {}), onOpenRequested: () => () => {},
+    release: vi.fn(async () => {}), onOpenRequested: () => () => {}, onZoomChanged: () => () => {},
     clearStorage: vi.fn(async () => {}),
   }
   const presentation = new ElectronWebviewPresentation({ mounted: () =>{  frame.attach() }, unmounted: () =>{  frame.detach() } })

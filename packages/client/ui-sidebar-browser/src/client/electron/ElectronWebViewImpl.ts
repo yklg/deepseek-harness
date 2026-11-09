@@ -166,6 +166,10 @@ export class ElectronWebViewImpl implements BrowserFrame {
       if (this.element === element && !signal.aborted) this.options.openRequested(url)
     })
     signal.addEventListener('abort', unsubscribeOpen, { once: true })
+    const unsubscribeZoom = this.bridge.onZoomChanged(reservation.lease, (factor) => {
+      if (this.element === element && !signal.aborted) this.setZoom(factor)
+    })
+    signal.addEventListener('abort', unsubscribeZoom, { once: true })
     element.addEventListener('dom-ready', () => {
       this.ready = true
       this.refreshTargetId()

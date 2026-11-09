@@ -27,6 +27,7 @@ export const DESKTOP_IPC = {
   browserRelease: 'dsh-desktop:browser-release',
   browserClearStorage: 'dsh-desktop:browser-clear-storage',
   browserOpenRequested: 'dsh-desktop:browser-open-requested',
+  browserZoomChanged: 'dsh-desktop:browser-zoom-changed',
   directoryPick: 'dsh-desktop:directory-pick',
   fileDragPrepare: 'dsh-desktop:file-drag-prepare',
   fileDragCancel: 'dsh-desktop:file-drag-cancel',

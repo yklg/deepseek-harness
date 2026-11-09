@@ -70,6 +70,9 @@ export interface ConsoleControllerOptions {
   readonly openRequested?: (url: string) => void
 }
 
+/** Initial platform-page zoom; the console ships at 80% for dashboard density. */
+const CONSOLE_DEFAULT_ZOOM = 0.8
+
 /** Probe cadence kept inside the product's one-to-two-minute detection window. */
 const DEFAULT_PROBE_INTERVAL_MS = 90_000
 
@@ -167,6 +170,7 @@ export class ConsoleController {
           ?? platform.loginUrl,
         backgroundThrottling: false,
         applicationOrigin: this.options.applicationOrigin,
+        initialZoom: CONSOLE_DEFAULT_ZOOM,
       })
     } catch (error) {
       this.publish({ phase: 'failed', error: messageOf(error) })

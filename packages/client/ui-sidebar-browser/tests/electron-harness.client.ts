@@ -14,6 +14,7 @@ export function electronFixture(initial?: BrowserTabState) {
   const bridge = {
     acquire: vi.fn(async (_workspace: string) => reservation),
     release: vi.fn(async (_lease: DesktopBrowserLeaseId) => {}),
+    onZoomChanged: vi.fn(() => () => {}),
     onOpenRequested: vi.fn((_lease: DesktopBrowserLeaseId, listener: (url: string) => void) => {
       opens.add(listener)
       return () => { opens.delete(listener) }

@@ -30,6 +30,10 @@ export interface ConsoleSnapshot {
   readonly checking: boolean
   /** Address the active surface currently shows, when it reported one. */
   readonly url: string | undefined
+  /** Effective embedded-page zoom, when the carrier supports it. */
+  readonly zoomFactor?: number | undefined
+  /** Inclusive zoom limits of the active carrier, when it supports zoom. */
+  readonly zoomLimits?: { readonly minimum: number; readonly maximum: number } | undefined
   /** Surface failure (creation, address, or navigation), when it failed. */
   readonly error?: string | undefined
   /** Failure of the latest login probe; the next probe retries automatically. */
@@ -150,7 +154,8 @@ export class ConsoleController {
     const generation = ++this.generation
     this.stopProbe()
     this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', checking: false,
-      url: undefined, error: undefined, probeError: undefined, pageIssue: undefined, blockedLink: undefined })
+      url: undefined, zoomFactor: undefined, zoomLimits: undefined,
+      error: undefined, probeError: undefined, pageIssue: undefined, blockedLink: undefined })
     await this.releaseSurface()
     if (this.isStale(generation)) return
     let surface: BrowserSurface
@@ -172,6 +177,7 @@ export class ConsoleController {
       return
     }
     this.surface = surface
+    this.publish({ zoomLimits: surface.zoom?.limits })
     this.navigatedAfterLogin = false
     this.unsubscribeSurface = surface.state.subscribe(() => { this.readSurface() })
     this.readSurface()
@@ -249,6 +255,20 @@ export class ConsoleController {
     if (this.snapshot.blockedLink === true) this.publish({ blockedLink: undefined })
   }
 
+  /** Increase the embedded platform page zoom. */
+  zoomIn(): void { this.zoomBy(1) }
+
+  /** Decrease the embedded platform page zoom. */
+  zoomOut(): void { this.zoomBy(-1) }
+
+  /** Restore the embedded platform page zoom to neutral. */
+  resetZoom(): void { this.zoomBy(0) }
+
+  private zoomBy(direction: -1 | 0 | 1): void {
+    if (this.disposed) return
+    this.surface?.zoom?.step(direction)
+  }
+
   /** Retry the failed surface and read the login state again. */
   retry(): void {
     if (this.disposed) return
@@ -298,6 +318,7 @@ export class ConsoleController {
     if (surface === undefined || this.disposed) return
     const frame = surface.state.getSnapshot()
     const url = frame.target?.url
+    if (frame.zoomFactor !== this.snapshot.zoomFactor) this.publish({ zoomFactor: frame.zoomFactor })
     if (url !== this.snapshot.url) {
       this.publish({ url, blockedLink: undefined })
       // A clean navigation clears a failure that the previous page reported.
@@ -422,6 +443,7 @@ export class ConsoleController {
     this.unmount = undefined
     const surface = this.surface
     this.surface = undefined
+    this.publish({ zoomFactor: undefined, zoomLimits: undefined })
     if (surface === undefined) return
     try {
       await surface.dispose()

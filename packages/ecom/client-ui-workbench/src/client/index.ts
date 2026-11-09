@@ -311,6 +311,9 @@ function registerUi(ctx: ClientContext): void {
       toggleSidebar: toggleNavigation,
       refreshLogin: () => { controller.refreshLogin() },
       navigateToLogin: () => { controller.navigateToLogin() },
+      zoomIn: () => { controller.zoomIn() },
+      zoomOut: () => { controller.zoomOut() },
+      resetZoom: () => { controller.resetZoom() },
       toggleAssistant,
     }),
   }, ConsoleHost)), 'client-ui-workbench: console host')

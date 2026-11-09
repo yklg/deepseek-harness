@@ -46,7 +46,7 @@ Client 插件可以调用 `ctx.sidebarRight.openTab('browser', { params: { url }
 
 工具栏提供后退、前进、刷新、前往和在系统浏览器中打开。Web 还提供逐 tab sandbox 开关；关闭它是临时选择，并会显示灰字、琥珀色底的警告。Desktop 显示观察到的页面标题。重启后，Browser 展示保存的标题和 URL；只有点击恢复或刷新才打开该地址。
 
-Desktop 还提供内嵌网页缩放：toolbar 显示缩小、当前百分比与放大，点击百分比重置为 100%。范围为 50–300%，步进 10%；页面布局缩放而应用界面保持固定，缩放因子随 tab 保存的导航状态一起持久化。命令在 macOS 上绑定 Cmd+Option+=、Cmd+Option+- 与 Cmd+Option+0（Windows 与 Linux 为 Ctrl+Alt），因为应用已将 primary+= 与 primary+- 用于自身字号。Web 没有页面缩放控件，因而省略这一组。
+Desktop 还提供内嵌网页缩放：toolbar 显示缩小、当前百分比与放大，点击百分比重置为 100%。范围为 50–300%，步进 10%；页面布局缩放而应用界面保持固定，缩放因子随 tab 保存的导航状态一起持久化。命令在 macOS 上绑定 Cmd+Option+=、Cmd+Option+- 与 Cmd+Option+0（Windows 与 Linux 为 Ctrl+Alt），因为应用已将 primary+= 与 primary+- 用于自身字号。Web 没有页面缩放控件，因而省略这一组。主区表面还暴露与 carrier 无关的受控缩放能力：`BrowserSurface.zoom` 在 50%–300% 间以 10% 步进缩放内嵌页面，并可重置为 100%；carrier 不支持缩放时该能力缺省。电商中控用它渲染自己的 toolbar 控件。
 
 -----
 

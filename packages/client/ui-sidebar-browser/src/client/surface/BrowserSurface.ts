@@ -2,7 +2,7 @@
 import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DesktopBrowserBridge } from '../../types.ts'
-import { type BrowserFrameState } from '../browser/BrowserFrame.ts'
+import { BROWSER_ZOOM, steppedBrowserZoom, type BrowserFrameState } from '../browser/BrowserFrame.ts'
 import type { BrowserPage, BrowserPageOptions } from '../browser/BrowserPage.ts'
 import { parseBrowserAddress } from '../browser/url.ts'
 import { createElectronPage } from '../electron/pages.ts'
@@ -21,10 +21,23 @@ export interface BrowserSurfaceOptions {
   readonly openRequested?: (url: string) => void
 }
 
+/** Controlled embedded-page zoom over the surface's carrier. */
+export interface BrowserZoom {
+  /** Inclusive supported factor range. */
+  readonly limits: { readonly minimum: number; readonly maximum: number }
+  /**
+   * Step the page zoom; 0 resets to the neutral factor.
+   * @param direction - one step out, reset, or one step in.
+   */
+  step(direction: -1 | 0 | 1): void
+}
+
 /** A mounted webview surface with carrier-neutral navigation state. */
 export interface BrowserSurface {
   /** Live URL, title, loading, error, zoom and target identity. */
   readonly state: HostObservable<BrowserFrameState>
+  /** Embedded-page zoom; undefined when the carrier cannot zoom. */
+  readonly zoom?: BrowserZoom
   /** @param host - stable DOM container; its id is used by the presentation. @returns detaches the page without disposing it. */
   mount(host: HTMLElement): () => void
   /** @param value - validated HTTP(S) address; throws on rejected input. */
@@ -48,6 +61,8 @@ export interface BrowserSurfaceService {
 
 /** Surface implementation over one BrowserPage. */
 class SurfaceController implements BrowserSurface {
+  /** Controlled zoom over the page carrier, absent for carriers without zoom. */
+  readonly zoom?: BrowserZoom
   private readonly store: SnapshotStore<BrowserFrameState>
   private readonly unsubscribe: () => void
   private unmount: (() => void) | undefined
@@ -59,6 +74,18 @@ class SurfaceController implements BrowserSurface {
     private readonly bridge: DesktopBrowserBridge | undefined) {
     this.initialUrl = options.initialUrl
     this.store = createSnapshotStore(page.frame.getSnapshot())
+    const carrierZoom = page.frame.zoom
+    if (carrierZoom !== undefined) {
+      this.zoom = {
+        limits: { minimum: BROWSER_ZOOM.minimum, maximum: BROWSER_ZOOM.maximum },
+        step: (direction) => {
+          if (this.disposed) return
+          const current = this.store.getSnapshot().zoomFactor
+          if (current === undefined) return
+          carrierZoom.setFactor(direction === 0 ? BROWSER_ZOOM.neutral : steppedBrowserZoom(current, direction))
+        },
+      }
+    }
     this.unsubscribe = page.frame.subscribe(() => {
       if (!this.disposed) this.store.set(page.frame.getSnapshot())
     })

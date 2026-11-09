@@ -62,3 +62,28 @@ it('exposes a desktop factory and a Web unavailable service', async () => {
     storageKey: 'platform:test:default', applicationOrigin: 'https://app.example',
   })).toThrow('desktop shell')
 })
+
+it('exposes controlled zoom over the carrier and stops after disposal', async () => {
+  const h = electronFixture()
+  fixtures.push(h)
+  const surface = createBrowserSurface(h, {
+    storageKey: 'platform:zoom:default', applicationOrigin: 'https://app.example',
+  }, h.bridge)
+  surface.mount(h.host)
+  surface.loadUrl('https://example.test/console')
+  const guest = await h.guest()
+  guest.emit('dom-ready')
+
+  expect(surface.zoom?.limits).toEqual({ minimum: 0.5, maximum: 3 })
+  surface.zoom?.step(1)
+  expect(h.frame.getSnapshot().zoomFactor).toBeCloseTo(1.1)
+  surface.zoom?.step(-1)
+  expect(h.frame.getSnapshot().zoomFactor).toBeCloseTo(1)
+  h.frame.zoom?.setFactor(2.3)
+  surface.zoom?.step(0)
+  expect(h.frame.getSnapshot().zoomFactor).toBe(1)
+
+  await surface.dispose()
+  surface.zoom?.step(1)
+  expect(h.frame.getSnapshot().zoomFactor).toBe(1)
+})

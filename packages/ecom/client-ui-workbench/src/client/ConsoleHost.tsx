@@ -37,6 +37,12 @@ export interface ConsoleHostInjected {
   readonly retry: () => void
   /** Open or collapse the harness navigation column. */
   readonly toggleSidebar: () => void
+  /** Increase the embedded platform page zoom. */
+  readonly zoomIn: () => void
+  /** Decrease the embedded platform page zoom. */
+  readonly zoomOut: () => void
+  /** Restore the embedded platform page zoom to neutral. */
+  readonly resetZoom: () => void
   /** Re-read the active platform's login state after the window regains focus. */
   readonly refreshLogin: () => void
   /** Return an out-of-platform guest to the canonical sign-in entry. */
@@ -98,7 +104,7 @@ function hintOf(snapshot: ConsoleSnapshot, available: boolean, t: ConsoleHostPro
 export function ConsoleHost(props: ConsoleHostProps): ReactNode {
   const {
     useConsole, usePanelInfo, useSidebar, attach, panelId, available, showSelection, retry, toggleSidebar,
-    refreshLogin, navigateToLogin, toggleAssistant, t,
+    refreshLogin, navigateToLogin, zoomIn, zoomOut, resetZoom, toggleAssistant, t,
   } = props
   const snapshot = useConsole(state => state)
   const collapsed = useSidebar(info => info.collapsed)
@@ -131,6 +137,18 @@ export function ConsoleHost(props: ConsoleHostProps): ReactNode {
             {loginStateText(snapshot, t)}
           </span>
           <div className={css.actions}>
+            {snapshot.zoomFactor === undefined || snapshot.zoomLimits === undefined ? null : (
+              <div className={css.zoom} role="group" aria-label={t('platform.zoom.label')}>
+                <Button size="sm" variant="ghost" aria-label={t('platform.zoom.out')} title={t('platform.zoom.out')}
+                  disabled={snapshot.zoomFactor <= snapshot.zoomLimits.minimum} onClick={zoomOut}>−</Button>
+                <Button size="sm" variant="ghost" className={css.zoomLevel} aria-label={t('platform.zoom.reset')}
+                  title={t('platform.zoom.reset')} onClick={resetZoom}>
+                  {t('platform.zoom.level', { percent: String(Math.round(snapshot.zoomFactor * 100)) })}
+                </Button>
+                <Button size="sm" variant="ghost" aria-label={t('platform.zoom.in')} title={t('platform.zoom.in')}
+                  disabled={snapshot.zoomFactor >= snapshot.zoomLimits.maximum} onClick={zoomIn}>+</Button>
+              </div>
+            )}
             {snapshot.pageIssue === 'left-platform' ? (
               <Button size="sm" variant="outline" onClick={navigateToLogin}>{t('platform.login.open')}</Button>
             ) : null}

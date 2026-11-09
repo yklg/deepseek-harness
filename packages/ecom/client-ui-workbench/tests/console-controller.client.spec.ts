@@ -46,6 +46,7 @@ function fakeSurface(options: BrowserSurfaceOptions): FakeSurface {
     mount(host) { surface.hostIds.push(host.id); return () => { surface.hostIds.push(`unmounted:${host.id}`) } },
     loadUrl: vi.fn(),
     reload: vi.fn(),
+    zoom: { limits: { minimum: 0.5, maximum: 3 }, step: vi.fn() },
     clearStorage: async () => {},
     dispose: vi.fn(async () => {}),
   }
@@ -452,5 +453,29 @@ describe('ConsoleController page classification', () => {
     // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
     expect(surfaces[0]?.loadUrl).toHaveBeenCalledTimes(1)
     expect(snapshotOf(controller).blockedLink).toBe(true)
+  })
+})
+
+describe('ConsoleController zoom', () => {
+  it('publishes the carrier zoom factor and forwards zoom commands', async () => {
+    const { controller, surfaces } = controllerFor(async () => buyinInProbe)
+    await controller.open('buyin')
+    surfaces[0]?.emit({ ...page('https://buyin.jinritemai.com/dashboard/live/control'), zoomFactor: 1 })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller).zoomFactor).toBe(1)
+    expect(snapshotOf(controller).zoomLimits).toEqual({ minimum: 0.5, maximum: 3 })
+    controller.zoomIn()
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.zoom?.step).toHaveBeenCalledWith(1)
+    controller.zoomOut()
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.zoom?.step).toHaveBeenCalledWith(-1)
+    controller.resetZoom()
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.zoom?.step).toHaveBeenCalledWith(0)
+    await controller.dispose()
+    controller.zoomIn()
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.zoom?.step).toHaveBeenCalledTimes(3)
   })
 })

@@ -94,3 +94,14 @@
   position: relative;
   min-height: 0;
 }
+
+.zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.zoomLevel {
+  min-width: 56px;
+  font-variant-numeric: tabular-nums;
+}

@@ -61,6 +61,10 @@ function hostProps(current: ConsoleSnapshot, overrides: Partial<ConsoleHostProps
     retry: vi.fn(),
     toggleSidebar: vi.fn(),
     refreshLogin: vi.fn(),
+    navigateToLogin: vi.fn(),
+    zoomIn: vi.fn(),
+    zoomOut: vi.fn(),
+    resetZoom: vi.fn(),
     toggleAssistant: vi.fn(),
     t: makeTranslate(en),
     ...overrides,
@@ -219,5 +223,44 @@ describe('shell console host', () => {
     )} />)
     fireEvent.click(screen.getByRole('button', { name: en['platform.aiAssistant'] }))
     expect(toggleAssistant).toHaveBeenCalledOnce()
+  })
+})
+
+describe('shell console zoom controls', () => {
+  it('shows zoom controls only when the carrier reports a factor and limits', () => {
+    render(<ConsoleHost {...hostProps(snapshot({
+      view: 'console', phase: 'ready', platformId: 'buyin', loginState: 'in',
+      zoomFactor: 1, zoomLimits: { minimum: 0.5, maximum: 3 },
+    }))} />)
+    expect(screen.getByRole('group', { name: en['platform.zoom.label'] })).toBeTruthy()
+    expect(screen.getByRole('button', { name: en['platform.zoom.in'] })).toBeTruthy()
+    expect(screen.getByRole('button', { name: en['platform.zoom.out'] })).toBeTruthy()
+  })
+
+  it('hides zoom controls without a carrier factor', () => {
+    render(<ConsoleHost {...hostProps(snapshot({
+      view: 'console', phase: 'ready', platformId: 'buyin', loginState: 'in',
+    }))} />)
+    expect(screen.queryByRole('group', { name: en['platform.zoom.label'] })).toBeNull()
+  })
+
+  it('routes zoom buttons and disables them at the limits', () => {
+    const zoomIn = vi.fn()
+    const zoomOut = vi.fn()
+    const resetZoom = vi.fn()
+    render(<ConsoleHost {...hostProps(snapshot({
+      view: 'console', phase: 'ready', platformId: 'buyin', loginState: 'in',
+      zoomFactor: 3, zoomLimits: { minimum: 0.5, maximum: 3 },
+    }), { zoomIn, zoomOut, resetZoom })} />)
+    const into = screen.getByRole('button', { name: en['platform.zoom.in'] }) as HTMLButtonElement
+    const out = screen.getByRole('button', { name: en['platform.zoom.out'] }) as HTMLButtonElement
+    const reset = screen.getByRole('button', { name: en['platform.zoom.reset'] })
+    expect(into.disabled).toBe(true)
+    expect(out.disabled).toBe(false)
+    fireEvent.click(out)
+    fireEvent.click(reset)
+    expect(zoomOut).toHaveBeenCalledOnce()
+    expect(resetZoom).toHaveBeenCalledOnce()
+    expect(zoomIn).not.toHaveBeenCalled()
   })
 })

@@ -5,19 +5,34 @@
 .host {
   position: absolute;
   top: 0;
-  right: 0;
+  right: auto;
   bottom: 0;
-  left: var(--dsh-frame-sidebar-width, 0px);
+  left: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   background: var(--dsw-alias-bg-base);
   visibility: hidden;
   pointer-events: none;
+  transition: left var(--ds-transition-duration) var(--ds-ease-in-out);
+}
+
+.host[data-ecom-console-present='true'] {
+  visibility: visible;
+}
+
+.host[data-ecom-console-leaving='true'] {
+  left: 100%;
 }
 
 .host[data-ecom-console-active='true'] {
-  visibility: visible;
   pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .host {
+    transition: none;
+  }
 }
 
 /* Console top bar: navigation toggle, active platform, login state, and shell actions.

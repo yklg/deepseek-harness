@@ -6,7 +6,7 @@
  * The seat clears the harness sidebar track so the product console fills the
  * workspace to its right.
  */
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { MainPanelId, SidebarInfo } from '@deepseek-ai/dsh-client-ui-layout/client'
@@ -35,8 +35,6 @@ export interface ConsoleHostInjected {
   readonly showSelection: () => void
   /** Retry the failed console surface and read its login state again. */
   readonly retry: () => void
-  /** Open or collapse the harness navigation column. */
-  readonly toggleSidebar: () => void
   /** Increase the embedded platform page zoom. */
   readonly zoomIn: () => void
   /** Decrease the embedded platform page zoom. */
@@ -103,15 +101,39 @@ function hintOf(snapshot: ConsoleSnapshot, available: boolean, t: ConsoleHostPro
  */
 export function ConsoleHost(props: ConsoleHostProps): ReactNode {
   const {
-    useConsole, usePanelInfo, useSidebar, attach, panelId, available, showSelection, retry, toggleSidebar,
+    useConsole, usePanelInfo, attach, panelId, available, showSelection, retry,
     refreshLogin, navigateToLogin, zoomIn, zoomOut, resetZoom, toggleAssistant, t,
   } = props
   const snapshot = useConsole(state => state)
-  const collapsed = useSidebar(info => info.collapsed)
-  const active = usePanelInfo(info => info.activePanelId === panelId) && snapshot.view === 'console'
+  const panelActive = usePanelInfo(info => info.activePanelId === panelId)
+  const active = panelActive && snapshot.view === 'console'
+  const [present, setPresent] = useState(active)
+  const [leaving, setLeaving] = useState(false)
   const platform = snapshot.platformId === null ? undefined : platformById(snapshot.platformId)
   const viewport = useRef<HTMLDivElement | null>(null)
   const hint = snapshot.view === 'console' ? hintOf(snapshot, available, t) : undefined
+
+  useEffect(() => {
+    if (active) {
+      setPresent(true)
+      setLeaving(true)
+      const frame = requestAnimationFrame(() => { setLeaving(false) })
+      return () => { cancelAnimationFrame(frame) }
+    }
+    if (!present) return undefined
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduced) {
+      setLeaving(false)
+      setPresent(false)
+      return undefined
+    }
+    setLeaving(true)
+    const timer = setTimeout(() => {
+      setLeaving(false)
+      setPresent(false)
+    }, 200)
+    return () => { clearTimeout(timer) }
+  }, [active, present])
 
   useEffect(() => {
     const element = viewport.current
@@ -126,12 +148,12 @@ export function ConsoleHost(props: ConsoleHostProps): ReactNode {
       className={css.host}
       data-ecom-console-host
       data-ecom-console-active={active ? 'true' : 'false'}
+      data-ecom-console-present={present ? 'true' : 'false'}
+      data-ecom-console-leaving={leaving ? 'true' : 'false'}
+      aria-hidden={active ? undefined : 'true'}
     >
-      {active && platform !== undefined ? (
+      {present && platform !== undefined ? (
         <header className={css.bar}>
-          <Button size="sm" variant="ghost" onClick={toggleSidebar}>
-            {collapsed ? t('platform.nav.open') : t('platform.nav.close')}
-          </Button>
           <h1 className={css.title}>{t(platform.titleKey)}</h1>
           <span className={css.loginState} data-ecom-console-login-state={snapshot.loginState}>
             {loginStateText(snapshot, t)}

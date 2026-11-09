@@ -399,9 +399,28 @@
    rectangle and hides with visibility, never by unmounting the subtree. */
 .consoleSeat {
   position: absolute;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--dsh-frame-sidebar-width, 0px);
   z-index: 10;
   pointer-events: none;
+}
+
+/* The full-area seat follows the sidebar track; ease only the discrete toggle
+   so a drag or window resize still tracks instantly. */
+.frame[data-animating] .consoleSeat {
+  transition: left var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+}
+
+.frame[data-dragging] .consoleSeat {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame[data-animating] .consoleSeat {
+    transition: none;
+  }
 }
 
 .consoleSeat > * {

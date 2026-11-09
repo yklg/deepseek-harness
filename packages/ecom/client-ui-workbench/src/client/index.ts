@@ -308,7 +308,6 @@ function registerUi(ctx: ClientContext): void {
       available: controller.available,
       showSelection: () => { controller.showSelection() },
       retry: () => { controller.retry() },
-      toggleSidebar: toggleNavigation,
       refreshLogin: () => { controller.refreshLogin() },
       navigateToLogin: () => { controller.navigateToLogin() },
       zoomIn: () => { controller.zoomIn() },

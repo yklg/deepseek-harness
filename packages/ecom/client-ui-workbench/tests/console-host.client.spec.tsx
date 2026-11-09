@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** Shell console host: persistent seat, platform top bar, status line, and viewport mounting. */
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { allowAllAccess, contextMenuHook, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
@@ -191,18 +191,39 @@ describe('shell console host', () => {
     expect(screen.getByRole('status').textContent).toBe(en['platform.login.required'])
   })
 
-  it('labels the navigation toggle from the sidebar state and routes the click', () => {
-    const toggleSidebar = vi.fn()
+  it('does not render a duplicate navigation toggle in the console bar', () => {
+    render(<ConsoleHost {...hostProps(snapshot({
+      view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'in',
+    }))} />)
+    expect(screen.queryByRole('button', { name: en['platform.nav.close'] })).toBeNull()
+    expect(screen.queryByRole('button', { name: en['platform.nav.open'] })).toBeNull()
+  })
+
+  it('keeps the seat present through the exit transition, then hides it', () => {
+    vi.useFakeTimers()
     const active = snapshot({ view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'in' })
-    const { rerender } = render(<ConsoleHost {...hostProps(active, { toggleSidebar })} />)
-    fireEvent.click(screen.getByRole('button', { name: en['platform.nav.close'] }))
-    expect(toggleSidebar).toHaveBeenCalledOnce()
-    rerender(<ConsoleHost {...hostProps(active, {
-      toggleSidebar,
-      useSidebar: <T,>(select: (value: SidebarInfo) => T): T => select({ collapsed: true }),
-    })} />)
-    fireEvent.click(screen.getByRole('button', { name: en['platform.nav.open'] }))
-    expect(toggleSidebar).toHaveBeenCalledTimes(2)
+    const { container, rerender } = render(<ConsoleHost {...hostProps(active)} />)
+    const seat = consoleSeat(container)!
+    expect(seat.getAttribute('data-ecom-console-present')).toBe('true')
+    rerender(<ConsoleHost {...hostProps({ ...active, view: 'select' })} />)
+    expect(seat.getAttribute('data-ecom-console-active')).toBe('false')
+    expect(seat.getAttribute('data-ecom-console-leaving')).toBe('true')
+    expect(seat.getAttribute('data-ecom-console-present')).toBe('true')
+    act(() => { vi.advanceTimersByTime(200) })
+    expect(seat.getAttribute('data-ecom-console-present')).toBe('false')
+    vi.useRealTimers()
+  })
+
+  it('hides instantly when reduced motion is requested', () => {
+    const original = window.matchMedia
+    window.matchMedia = vi.fn(() => ({ matches: true })) as unknown as typeof window.matchMedia
+    try {
+      const active = snapshot({ view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'in' })
+      const { container, rerender } = render(<ConsoleHost {...hostProps(active)} />)
+      const seat = consoleSeat(container)!
+      rerender(<ConsoleHost {...hostProps({ ...active, view: 'select' })} />)
+      expect(seat.getAttribute('data-ecom-console-present')).toBe('false')
+    } finally { window.matchMedia = original }
   })
 
   it('refreshes the sign-in state while the platform reports signed out', () => {

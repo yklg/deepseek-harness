@@ -357,7 +357,7 @@ describe('ConsoleController', () => {
     const { controller, surfaces } = controllerFor(async () => probe)
     await controller.open('douyin-shop')
     surfaces[0]?.emit(page('https://fxg.jinritemai.com/help'))
-    probe = { url: 'https://fxg.jinritemai.com/help', title: '帮助中心', text: '帮助中心' }
+    probe = { url: '', title: '', text: '' }
     await vi.advanceTimersByTimeAsync(1_000)
     expect(snapshotOf(controller).loginState).toBe('unknown')
     expect(surfaces[0]?.['loadUrl']).not.toHaveBeenCalled()

@@ -363,7 +363,9 @@ export class ConsoleController {
       if (!this.isStale(generation)) {
         this.probeAbort = undefined
         this.publish({ checking: false })
-        this.scheduleProbe(this.lastProbeFailed
+        // An indeterminate state converges on the next short retry instead of
+        // waiting a full probe interval after the sign-in redirect settles.
+        this.scheduleProbe(this.lastProbeFailed || this.snapshot.loginState === 'unknown'
           ? this.options.probeRetryMs ?? DEFAULT_PROBE_RETRY_MS
           : this.options.probeIntervalMs ?? DEFAULT_PROBE_INTERVAL_MS)
       }

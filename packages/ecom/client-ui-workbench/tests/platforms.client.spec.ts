@@ -183,10 +183,8 @@ describe('login probe', () => {
     expect(buyin.loginState(probe('https://buyin.jinritemai.com/dashboard/live', '直播中控'))).toBe('in')
   })
 
-  it('keeps a platform page without login or console markers unknown', () => {
-    const state = douyinShop.loginState(probe('https://fxg.jinritemai.com/help', '帮助中心'))
-    expect(state).toBe('unknown')
-    expect(state).not.toBe('in')
+  it('reports a platform page without login markers as signed in', () => {
+    expect(douyinShop.loginState(probe('https://fxg.jinritemai.com/help', '帮助中心'))).toBe('in')
   })
 
   it('reports an in-page login prompt as signed out', () => {
@@ -202,7 +200,7 @@ describe('login probe', () => {
 describe('platform URL taxonomy', () => {
   it('classifies Buyin console, login, platform, and portal addresses', () => {
     expect(buyin.classifyUrl('https://buyin.jinritemai.com/dashboard/live/control')).toBe('console')
-    expect(buyin.classifyUrl('https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24')).toBe('login')
+    expect(buyin.classifyUrl('https://buyin.jinritemai.com/mpa/account/login?type=24')).toBe('login')
     expect(buyin.classifyUrl('https://buyin.jinritemai.com/dashboard')).toBe('platform')
     expect(buyin.classifyUrl('https://www.douyinec.com/')).toBe('external')
   })

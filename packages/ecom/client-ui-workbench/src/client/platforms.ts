@@ -134,7 +134,9 @@ function probeState(origins: readonly string[], probe: PlatformProbe | undefined
   const onPlatform = origins.includes(url.origin)
   if (!onPlatform || LOGIN_PATH.test(url.pathname) || LOGIN_TEXT.test(probe.text)) return 'out'
   if (CONSOLE_TEXT.test(probe.text)) return 'in'
-  return 'unknown'
+  // On a platform origin without sign-in copy or a login path the session is
+  // authenticated; whether the page is a console is the transition's decision.
+  return 'in'
 }
 
 /**
@@ -181,7 +183,7 @@ export const buyin: PlatformAdapter = {
   id: 'buyin',
   titleKey: 'platform.buyin.title',
   descriptionKey: 'platform.buyin.description',
-  loginUrl: 'https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24',
+  loginUrl: 'https://buyin.jinritemai.com/mpa/account/login?type=24',
   homeUrl: 'https://buyin.jinritemai.com/',
   origins: BUYIN_ORIGINS,
   loginOrigins: BUYIN_ORIGINS,

@@ -47,7 +47,7 @@ type ContentsFixture = EventEmitter & {
 }
 type WindowFixture = EventEmitter & { webContents: ContentsFixture; isDestroyed(): boolean }
 type GuestsFixture = {
-  acquire(owner: ContentsFixture, workspace: unknown): DesktopBrowserReservation
+  acquire(owner: ContentsFixture, workspace: unknown, options?: unknown): DesktopBrowserReservation
   release(owner: ContentsFixture, id: unknown): Promise<void>
   clearStorage(workspace: unknown): Promise<void>
   bind(window: WindowFixture, attachInput: (guest: ContentsFixture, name: DesktopBrowserLeaseId) => () => void): void
@@ -72,7 +72,7 @@ function contentsFixture(url = 'about:blank') {
  */
 function fixtureGuests(guests: InstanceType<typeof DesktopBrowserGuests>): GuestsFixture {
   return {
-    acquire: (contents, workspace) => guests.acquire(contents as never, workspace as never),
+    acquire: (contents, workspace, options) => guests.acquire(contents as never, workspace as never, options as never),
     release: (contents, id) => guests.release(contents as never, id as never),
     clearStorage: workspace => guests.clearStorage(workspace as never),
     bind: (window, attachInput) => guests.bind(window as never, attachInput as never),
@@ -138,6 +138,29 @@ describe('persistent workspace partitions', () => {
     expect(second.partition).toBe(first.partition)
     expect(other.partition).not.toBe(first.partition)
     expect(first.partition).not.toContain('workspace-alpha')
+  })
+
+  it('applies the requested throttle policy only to that guest lease', () => {
+    const f = fixture()
+    const throttled = f.guests.acquire(f.owner.contents, 'platform:douyin-shop:default',
+      { backgroundThrottling: false })
+    const throttledPreferences: Record<string, unknown> = {}
+    f.owner.contents.emit('will-attach-webview', { preventDefault: vi.fn() }, throttledPreferences,
+      { src: `about:blank#${throttled.lease}`, partition: throttled.partition })
+    expect(throttledPreferences.backgroundThrottling).toBe(false)
+
+    const ordinary = f.guests.acquire(f.owner.contents, 'platform:buyin:default')
+    const ordinaryPreferences: Record<string, unknown> = {}
+    f.owner.contents.emit('will-attach-webview', { preventDefault: vi.fn() }, ordinaryPreferences,
+      { src: `about:blank#${ordinary.lease}`, partition: ordinary.partition })
+    expect(ordinaryPreferences.backgroundThrottling).toBe(true)
+  })
+
+  it('rejects malformed guest options before reserving a lease', () => {
+    const f = fixture()
+    expect(() => f.guests.acquire(f.owner.contents, 'platform:a', null)).toThrow('invalid guest options')
+    expect(() => f.guests.acquire(f.owner.contents, 'platform:a',
+      { backgroundThrottling: 'no' })).toThrow('backgroundThrottling must be boolean')
   })
 
   it('rejects workspace identities that cannot name a partition', () => {

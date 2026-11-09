@@ -21,7 +21,8 @@ import type { DockIntents, DockLabels, TabRenderer } from '../contract/adapter.t
 import type { FloatRect, LayoutState, PaneId, TabId, TabRecord } from '../contract/types.ts'
 import { FLOAT_MIN_SIZE } from '../engine/constraints.ts'
 import {
-  boundedResize, FLOAT_RESISTANCE, legalFloatRect, movedRect, resistedRect, resizedRect, unresistedRect, type FloatBounds,
+  boundedResize, FLOAT_RESISTANCE, legalFloatRect, movedRect, resistedRect, resolveFloatBounds,
+  resizedRect, unresistedRect, type FloatBounds,
 } from '../engine/geometry.ts'
 import {
   launchVelocity, SPRING_DEADLINE_MS, SPRING_MAX_FRAME_MS, SPRING_MAX_VELOCITY, SPRING_STALL_MS, springSettled, stepSpring,
@@ -79,11 +80,22 @@ function raised(state: LayoutState, paneId: PaneId): boolean {
 function floatBounds(): FloatBounds {
   const root = document.documentElement
   const windows = root.hasAttribute('data-windows-titlebar')
+  const fullscreen = root.hasAttribute('data-fullscreen')
   // Desktop publishes the caption height in pixels on the root's inline style;
   // a root without it keeps the 20px floor.
-  const caption = windows && !root.hasAttribute('data-fullscreen')
-    ? Number.parseFloat(root.style.getPropertyValue('--dsh-windows-titlebar-height')) : 0
-  return { top: windows ? (Number.isFinite(caption) ? caption : 0) + 20 : 0, width: window.innerWidth, height: window.innerHeight }
+  const caption = windows && !fullscreen
+    ? Number.parseFloat(root.style.getPropertyValue('--dsh-windows-titlebar-height')) : Number.NaN
+  // The shell publishes the chrome clearance on the root (macOS traffic lights
+  // and shell.leading). A missing variable keeps the historical zero floor.
+  const clearance = Number.parseFloat(getComputedStyle(root).getPropertyValue('--dsh-frame-top-clearance'))
+  return resolveFloatBounds({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    windowsTitlebar: windows,
+    fullscreen,
+    captionHeight: Number.isFinite(caption) ? caption : undefined,
+    topClearance: Number.isFinite(clearance) ? clearance : undefined,
+  })
 }
 
 /** Whether the platform asks for reduced motion; environments without `matchMedia` (jsdom) report no preference. */
@@ -182,14 +194,23 @@ export function useFloatGestures(state: LayoutState, intents: DockIntents) {
   }).current
 
   useEffect(() => {
-    const resize = (): void => {
+    const refresh = (): void => {
       if (cancelSettling()) setPreview(undefined)
       area.current = floatBounds()
       setBounds(area.current)
     }
-    window.addEventListener('resize', resize)
+    window.addEventListener('resize', refresh)
+    // Window chrome attributes (native fullscreen, the Windows caption) change
+    // without a resize; refresh the cached bounds outside any gesture so a
+    // press never has to read layout.
+    const observer = new MutationObserver(refresh)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-platform', 'data-fullscreen', 'data-windows-titlebar', 'style'],
+    })
     return () => {
-      window.removeEventListener('resize', resize)
+      window.removeEventListener('resize', refresh)
+      observer.disconnect()
       cancelSettling()
     }
   }, [cancelSettling])
@@ -264,7 +285,6 @@ export function useFloatGestures(state: LayoutState, intents: DockIntents) {
     // another panel's return ends at its target.
     const drawn = settling.current?.paneId === paneId ? preview?.rect : undefined
     if (cancelSettling() && drawn === undefined) setPreview(undefined)
-    area.current = floatBounds()
     const reduce = reducedMotion()
     const shown = drawn ?? legalFloatRect(floatRect(getPane(state, paneId)), area.current)
     const rect = mode === 'move' && !reduce ? unresistedRect(shown, area.current) : shown

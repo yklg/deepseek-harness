@@ -18,6 +18,7 @@ Desktop product events use the optional [product analytics service](../product-a
 - [Conversation assembly](#conversation-assembly)
 - [Sent user text](#sent-user-text)
 - [Shell and standard props](#shell-and-standard-props)
+- [Embedded conversation](#embedded-conversation)
 - [Temporary composer entries](#temporary-composer-entries)
 - [Model Experience](#model-experience)
 - [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
@@ -141,6 +142,15 @@ File chips and editable skill references share a whole-reference hover backgroun
 When another writer owns the Session, the send-error toast asks the user to quit other running DSH instances and retry.
 
 Two independent Escape presses in the focused Chat or Composer stop its current running turn and preserve queued messages. The interval comes from the shortcuts plugin’s `stopSequenceMs` configuration (500 ms by default). A menu, approval, modal, terminal, embedded webpage, composition, repeated key, changed input region, Session or turn breaks the sequence. The shortcut uses the same scoped cancellation as the Stop button. The plugin registers Stop as a fixed action in the `input` display group. Its registration reserves plain Escape against editable shortcuts and supplies the `Esc Esc` sequence shown in the Stop button’s hover and keyboard-focus tooltip.
+
+<a id="embedded-conversation"></a>
+## Embedded conversation
+
+`EmbeddedConversation` is the public `/client` export that renders the shared Conversation body — transcript, Composer, and blank Hero — as a secondary surface such as a product-owned floating panel or overlay window. It opens the `conversation.content` Factory with `variant: 'embedded'` and fixes that occurrence's `views` local position to the Chat View, so the occurrence has no main Header and no content-width handles while its Composer stays live. The phase follows the same decision as the main shell: active targets, a running Session, or a nonblank Session render the transcript, a blank Session lands on the Hero, and a replaying blank Session waits in the settling layout.
+
+The same implementation is also registered as the public `conversation.embedded` Factory (scope `session-maybe`, no input props). A host Slot component renders that Factory through its standard `renderFactorySlot` seat; this Component form is for hosts that may import this package's runtime values, while a feature package under `packages/client` hosts the surface through the Factory because client bundles may not import another plugin's runtime values. Both entries share the phase decision and render nothing while the `conversation.content` Factory is unregistered.
+
+The exported Component's props are the optional-Session standard kit delivered to a `session` or `session-maybe` Slot entry: the slot renderer supplies `useSession`, `useConversation`, `useSessions`, and `renderFactorySlot`, and a registration whose renderer does not publish that kit cannot render it. The target Session is always the surrounding Session scope, never a component prop. A strict-session host wraps the Slot render in the injected `SessionProvider` around a retained `SessionReference`; a root-scope overlay such as `shell.overlay` declares a `session-maybe` child Slot and either renders it directly to inherit the current main-view Session or wraps it in `SessionProvider` to pin an explicit reference. [ui-sidebar-right](../ui-sidebar-right/README.md) keeps retained Session tabs with the same declaration pattern, and ui-subagent's right-sidebar chat renders this component for one retained child Session. With no target Session the occurrence renders the Hero and its Composer; while the `conversation.content` Factory has no registration it renders nothing.
 
 <a id="temporary-composer-entries"></a>
 ## Temporary composer entries

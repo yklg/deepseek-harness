@@ -30,6 +30,7 @@ export class ElectronWebViewImpl implements BrowserFrame {
   private firstDocument = true
   private checkpoint: BrowserTarget | undefined
   private zoomFactor: number
+  private targetId: number | undefined
   private disposal: Promise<void> | undefined
   private attachment: AbortController | undefined
   private readonly releases = new Set<Promise<void>>()
@@ -151,7 +152,9 @@ export class ElectronWebViewImpl implements BrowserFrame {
   private async createGuest(attachmentSignal: AbortSignal): Promise<void> {
     this.workspaceKey ??= await this.workspace(attachmentSignal)
     if (attachmentSignal.aborted) return
-    const reservation = await this.bridge.acquire(this.workspaceKey)
+    const reservation = this.options.backgroundThrottling === undefined
+      ? await this.bridge.acquire(this.workspaceKey)
+      : await this.bridge.acquire(this.workspaceKey, { backgroundThrottling: this.options.backgroundThrottling })
     // oxlint-disable-next-line typescript/no-unnecessary-condition -- The signal can abort while acquire is pending.
     if (attachmentSignal.aborted) { await this.release(reservation.lease); return }
     this.lease = reservation.lease
@@ -165,6 +168,7 @@ export class ElectronWebViewImpl implements BrowserFrame {
     signal.addEventListener('abort', unsubscribeOpen, { once: true })
     element.addEventListener('dom-ready', () => {
       this.ready = true
+      this.refreshTargetId()
       this.applyZoom()
       this.observe(this.store.getSnapshot().address !== 'requested')
       this.loadPending()
@@ -261,6 +265,18 @@ export class ElectronWebViewImpl implements BrowserFrame {
     catch (error) { console.error('Desktop browser zoom failed', error) }
   }
 
+  private refreshTargetId(): void {
+    if (this.element === undefined || this.lifetime.signal.aborted) return
+    try {
+      const targetId = this.element.getWebContentsId()
+      if (targetId === this.targetId) return
+      this.targetId = targetId
+      this.store.set({ ...this.store.getSnapshot(), targetId })
+    } catch (_error) {
+      // The guest may not expose a WebContents id before attachment; dom-ready retries.
+    }
+  }
+
   private failed(error: BrowserLoadError = { code: undefined, description: undefined }): void {
     if (this.lifetime.signal.aborted) return
     const current = this.store.getSnapshot()
@@ -280,6 +296,10 @@ export class ElectronWebViewImpl implements BrowserFrame {
     this.element = undefined
     this.ready = false
     this.firstDocument = true
+    if (this.targetId !== undefined) {
+      this.targetId = undefined
+      if (!this.lifetime.signal.aborted) this.store.set({ ...this.store.getSnapshot(), targetId: undefined })
+    }
     const lease = this.lease
     this.lease = undefined
     return lease === undefined ? Promise.resolve() : this.release(lease)

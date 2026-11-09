@@ -25,7 +25,7 @@ ecom 组承载产品分支的电商直播工作台。它包含 Host 自动化授
 | 包 | 职责 | ctx 键 |
 |---|---|---|
 | [`workbench-server`](workbench-server/README.zh.md) | Host 自动化授权、云营只读接入与草稿工具 | `workbench` / `remote.workbench` |
-| [`client-ui-workbench`](client-ui-workbench/README.zh.md) | 基于 workbench Remote 的 Web 启动页与实时控制台标签页 | 注册槽位 |
+| [`client-ui-workbench`](client-ui-workbench/README.zh.md) | Web 平台选择、桌面端常驻中控座位与实时控制台标签页 | 注册槽位 |
 | [`bundle-workbench`](bundle-workbench/README.zh.md) | 插入 Host 行与 Web UI 行的组合包补丁 | 不适用 |
 
 -----

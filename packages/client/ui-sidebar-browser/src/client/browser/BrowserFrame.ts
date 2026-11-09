@@ -20,6 +20,8 @@ export interface BrowserFrameState {
   readonly sandboxEnabled: boolean | undefined
   /** Effective page-zoom factor; undefined when this provider cannot zoom embedded content. */
   readonly zoomFactor: number | undefined
+  /** Desktop guest identity used by the automation broker; undefined before attachment. */
+  readonly targetId: number | undefined
 }
 
 /** Optional iframe policy control, not an Electron process-sandbox switch. */
@@ -87,5 +89,5 @@ export interface BrowserFrame extends HostObservable<BrowserFrameState> {
  */
 export function emptyBrowserFrame(): BrowserFrameState {
   return { target: undefined, address: 'empty', loading: false, canGoBack: false, canGoForward: false,
-    error: undefined, sandboxEnabled: undefined, zoomFactor: undefined }
+    error: undefined, sandboxEnabled: undefined, zoomFactor: undefined, targetId: undefined }
 }

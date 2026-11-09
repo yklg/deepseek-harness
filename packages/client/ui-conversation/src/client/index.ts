@@ -37,6 +37,12 @@ export type {
 } from './contract/groups.ts'
 export { ConversationController, UnsupportedImageMediaTypeError } from './service.ts'
 export type { IConversation } from './service.ts'
+// Public embedded-conversation contract: this Component for hosts allowed to
+// import this package's runtime values, and the `conversation.embedded` Factory
+// (declared in ./contract/slots.ts, scope `session-maybe`, no input props) for
+// hosts whose client bundle may only render through Slot seats.
+export { EmbeddedConversation } from './skeleton/EmbeddedConversation.tsx'
+export type { EmbeddedConversationProps } from './skeleton/EmbeddedConversation.tsx'
 export type {
   ConversationContextReader, ConversationLocation,
   ConversationLocationData, ConversationLocationDataScope, ConversationLocationDataSource,

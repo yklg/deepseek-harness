@@ -1,5 +1,8 @@
 /** Copy owned by the ecom workbench launcher panel and its live-console tab. */
 import type {} from '@deepseek-ai/dsh-client-ui-slots'
+import {
+  platformZh, platformEn, platformJa, platformEs, platformFr, platformDe, platformRu, platformPt,
+} from './platform-locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -50,6 +53,7 @@ export const zh = {
   'console.event.targetClosed': '浏览器目标已关闭',
   'console.event.targetCrashed': '浏览器目标已崩溃',
   'console.target': '目标 {targetId}',
+  ...platformZh,
 } satisfies Record<string, string>
 
 /** Key domain this plugin merges into the locale registry; every shipped language carries exactly these keys. */
@@ -97,6 +101,7 @@ export const en = {
   'console.event.targetClosed': 'Browser target closed',
   'console.event.targetCrashed': 'Browser target crashed',
   'console.target': 'Target {targetId}',
+  ...platformEn,
 } satisfies Record<EcomWorkbenchLocaleKey, string>
 
 /** Japanese dictionary, checked against the English keys. */
@@ -141,6 +146,7 @@ export const ja = {
   'console.event.targetClosed': 'ブラウザターゲットを閉じました',
   'console.event.targetCrashed': 'ブラウザターゲットがクラッシュしました',
   'console.target': 'ターゲット {targetId}',
+  ...platformJa,
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -185,6 +191,7 @@ export const es = {
   'console.event.targetClosed': 'Destino del navegador cerrado',
   'console.event.targetCrashed': 'El destino del navegador falló',
   'console.target': 'Destino {targetId}',
+  ...platformEs,
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -229,6 +236,7 @@ export const fr = {
   'console.event.targetClosed': 'Cible du navigateur fermée',
   'console.event.targetCrashed': 'La cible du navigateur a planté',
   'console.target': 'Cible {targetId}',
+  ...platformFr,
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -273,6 +281,7 @@ export const de = {
   'console.event.targetClosed': 'Browserziel geschlossen',
   'console.event.targetCrashed': 'Browserziel abgestürzt',
   'console.target': 'Ziel {targetId}',
+  ...platformDe,
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -317,6 +326,7 @@ export const ru = {
   'console.event.targetClosed': 'Цель браузера закрыта',
   'console.event.targetCrashed': 'Цель браузера аварийно завершилась',
   'console.target': 'Цель {targetId}',
+  ...platformRu,
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -361,4 +371,5 @@ export const pt = {
   'console.event.targetClosed': 'Destino do navegador fechado',
   'console.event.targetCrashed': 'O destino do navegador falhou',
   'console.target': 'Destino {targetId}',
+  ...platformPt,
 } satisfies Record<keyof typeof en, string>

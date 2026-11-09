@@ -25,7 +25,7 @@ The ecom group carries the product branch's ecommerce live-streaming workbench. 
 | Package | Role | ctx key |
 |---|---|---|
 | [`workbench-server`](workbench-server/README.md) | Host automation authority, Yunying reads, and draft tools | `workbench` / `remote.workbench` |
-| [`client-ui-workbench`](client-ui-workbench/README.md) | Web launcher page and live-console tab over the workbench Remote | registers slots |
+| [`client-ui-workbench`](client-ui-workbench/README.md) | Web platform selection, the persistent desktop console seat, and the live-console tab | registers slots |
 | [`bundle-workbench`](bundle-workbench/README.md) | Bundle patch inserting the Host row and the Web UI row | n/a |
 
 -----

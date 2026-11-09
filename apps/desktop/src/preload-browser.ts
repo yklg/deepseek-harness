@@ -17,7 +17,7 @@ export function createDesktopBrowserBridge(): DshDesktopBrowserBridge {
     }
   })
   return {
-    acquire: workspace => ipcRenderer.invoke(DESKTOP_IPC.browserAcquire, workspace) as ReturnType<DshDesktopBrowserBridge['acquire']>,
+    acquire: (workspace, options) => ipcRenderer.invoke(DESKTOP_IPC.browserAcquire, workspace, options) as ReturnType<DshDesktopBrowserBridge['acquire']>,
     release: lease => ipcRenderer.invoke(DESKTOP_IPC.browserRelease, lease) as Promise<void>,
     clearStorage: workspace => ipcRenderer.invoke(DESKTOP_IPC.browserClearStorage, workspace) as Promise<void>,
     onOpenRequested(lease, listener) {

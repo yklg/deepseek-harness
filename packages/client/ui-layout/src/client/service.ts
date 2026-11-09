@@ -24,10 +24,18 @@ export interface PanelInfo {
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
+/** Public sidebar presentation, derived from the same store the frame renders. */
+export interface SidebarInfo {
+  /** True when the sidebar column is collapsed (or narrow auto-collapse applies). */
+  readonly collapsed: boolean
+}
+
 /** Panel navigation and geometry actions exposed through ctx.layout. */
 export interface ILayout {
   /** Selected central panel from the same root store used by `usePanelInfo`. */
   readonly panelInfo: HostObservable<PanelInfo>
+  /** Derived sidebar presentation for feature-side layout transitions. */
+  readonly sidebarInfo: HostObservable<SidebarInfo>
   /**
    * Select a global central panel without changing the current Session.
    * @param panelId - registered main key, or null to show the Conversation.
@@ -35,10 +43,19 @@ export interface ILayout {
    */
   selectPanel(panelId: MainPanelId | null): void
   /**
+   * Select a main panel once at startup, unless the user navigates first.
+   * Applies at most once per controller; a repeated call is ignored.
+   * @param panelId - registered main key to open at startup.
+   * @throws if the selected main key is not registered; preserves the current selection.
+   */
+  selectStartupPanel(panelId: MainPanelId): void
+  /**
    * Start an asynchronous navigation, superseding any earlier pending navigation.
    * @returns a signal aborted by the next navigation or layout disposal; check it before committing UI state.
    */
   beginNavigation(): AbortSignal
+  /** @param collapsed - collapse or restore the sidebar column at the current width class. */
+  setSidebar(collapsed: boolean): void
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
   /**
@@ -56,6 +73,9 @@ export interface ILayout {
 /** Cross-plugin panel-action face (ctx.layout). */
 export class LayoutController implements ILayout {
   private navigation = new AbortController()
+  private startupApplied = false
+  private userNavigated = false
+  private disposed = false
 
   /**
    * @param panels - actions of the instance shared with the root entry.
@@ -66,6 +86,10 @@ export class LayoutController implements ILayout {
     private readonly panels: PanelActions,
     private readonly hasMainPanel: (id: MainPanelId) => boolean,
     readonly panelInfo: HostObservable<PanelInfo>,
+    readonly sidebarInfo: HostObservable<SidebarInfo> = {
+      getSnapshot: () => ({ collapsed: false }),
+      subscribe: () => () => {},
+    },
   ) {}
 
   /** Select a global panel or return to the Conversation. */
@@ -73,7 +97,20 @@ export class LayoutController implements ILayout {
     if (panelId !== null && !this.hasMainPanel(panelId)) {
       throw new Error(`layout.selectPanel: main panel "${panelId}" is not registered`)
     }
+    this.userNavigated = true
     this.navigation.abort()
+    this.panels.selectPanel(panelId)
+  }
+
+  /** Select a main panel once at startup unless the user navigated first. */
+  selectStartupPanel(panelId: MainPanelId): void {
+    if (this.startupApplied || this.disposed) return
+    this.startupApplied = true
+    if (this.userNavigated) return
+    if (!this.hasMainPanel(panelId)) {
+      throw new Error(`layout.selectStartupPanel: main panel "${panelId}" is not registered`)
+    }
+    if (this.panelInfo.getSnapshot().activePanelId !== null) return
     this.panels.selectPanel(panelId)
   }
 
@@ -84,14 +121,20 @@ export class LayoutController implements ILayout {
     return this.navigation.signal
   }
 
-  /** Invalidate pending navigations when the layout owner is unloaded. */
+  /** Invalidate pending navigations and late startup selections when the layout owner is unloaded. */
   dispose(): void {
+    this.disposed = true
     this.navigation.abort()
   }
 
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void {
     this.panels.toggleSidebar()
+  }
+
+  /** @param collapsed - collapse or restore the sidebar at the current width class. */
+  setSidebar(collapsed: boolean): void {
+    this.panels.setSidebarCollapsed(collapsed)
   }
 
   /** Report the right panel's track and fullscreen presentation. */

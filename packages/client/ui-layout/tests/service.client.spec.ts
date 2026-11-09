@@ -8,6 +8,7 @@ function fakePanels(): PanelActions {
     selectPanel: vi.fn(),
     retainMainPanels: vi.fn(),
     setSidebar: vi.fn(),
+    setSidebarCollapsed: vi.fn(),
     toggleSidebar: vi.fn(),
     setViewportWidth: vi.fn(),
     setRightbar: vi.fn(),
@@ -32,6 +33,59 @@ describe('LayoutController', () => {
     expect(panels.closeRightbar).toHaveBeenCalledTimes(1)
     // The drag width stays the frame's own business, never the caller's.
     expect(panels.setRightbar).not.toHaveBeenCalled()
+  })
+
+  it('forwards explicit sidebar collapse and exposes the supplied sidebar state', () => {
+    const panels = fakePanels()
+    const sidebar = createSnapshotStore({ collapsed: false })
+    const service = new LayoutController(panels, () => true,
+      createSnapshotStore({ activePanelId: null }), sidebar)
+    expect(service.sidebarInfo.getSnapshot()).toEqual({ collapsed: false })
+    service.setSidebar(true)
+    expect(panels.setSidebarCollapsed).toHaveBeenCalledExactlyOnceWith(true)
+    sidebar.set({ collapsed: true })
+    expect(service.sidebarInfo.getSnapshot()).toEqual({ collapsed: true })
+  })
+
+  it('applies one startup panel selection while the conversation is still active', () => {
+    const panels = fakePanels()
+    const service = new LayoutController(panels, () => true, createSnapshotStore({ activePanelId: null }))
+    service.selectStartupPanel('panel-a' as MainPanelId)
+    expect(panels.selectPanel).toHaveBeenCalledExactlyOnceWith('panel-a')
+    service.selectStartupPanel('panel-b' as MainPanelId)
+    expect(panels.selectPanel).toHaveBeenCalledOnce()
+  })
+
+  it('drops the startup selection once the user navigates first', () => {
+    const panels = fakePanels()
+    const service = new LayoutController(panels, () => true, createSnapshotStore({ activePanelId: null }))
+    service.selectPanel(null)
+    service.selectStartupPanel('panel-a' as MainPanelId)
+    expect(panels.selectPanel).toHaveBeenCalledExactlyOnceWith(null)
+  })
+
+  it('keeps an already selected main panel at startup', () => {
+    const panels = fakePanels()
+    const service = new LayoutController(panels, () => true,
+      createSnapshotStore({ activePanelId: 'panel-b' as MainPanelId }))
+    service.selectStartupPanel('panel-a' as MainPanelId)
+    expect(panels.selectPanel).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unregistered startup panel without changing selection', () => {
+    const panels = fakePanels()
+    const service = new LayoutController(panels, id => id === 'panel-a', createSnapshotStore({ activePanelId: null }))
+    expect(() => { service.selectStartupPanel('panel-b' as MainPanelId) })
+      .toThrow('main panel "panel-b" is not registered')
+    expect(panels.selectPanel).not.toHaveBeenCalled()
+  })
+
+  it('ignores a startup selection after disposal', () => {
+    const panels = fakePanels()
+    const service = new LayoutController(panels, () => true, createSnapshotStore({ activePanelId: null }))
+    service.dispose()
+    service.selectStartupPanel('panel-a' as MainPanelId)
+    expect(panels.selectPanel).not.toHaveBeenCalled()
   })
 
   it('can toggle the sidebar immediately after construction', () => {

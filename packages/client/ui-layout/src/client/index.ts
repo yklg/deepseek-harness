@@ -13,10 +13,11 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type { HostObservable, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
-import type { PanelInfo } from './service.ts'
+import type { PanelInfo, SidebarInfo } from './service.ts'
 import { AppFrame } from './AppFrame.tsx'
 import type { AppFrameInjected } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
+import { SIDEBAR_AUTO_COLLAPSE } from './columns.ts'
 import { LayoutController } from './service.ts'
 import type { ShortcutCommandId } from '@deepseek-ai/dsh-client-shortcuts/client'
 import { en, ja, es, fr, de, ru, pt, zh } from './shortcut-locales.ts'
@@ -28,7 +29,7 @@ import { ThemePresenter } from './theme-presenter.ts'
 // OwnerShare contracts below are the render-side halves registrants compose
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
-export type { ILayout, MainPanelId, PanelInfo } from './service.ts'
+export type { ILayout, MainPanelId, PanelInfo, SidebarInfo } from './service.ts'
 
 /** Selector hook over root-scoped panel selection. */
 export type UsePanelInfo = SnapshotSelectorHook<PanelInfo>
@@ -94,6 +95,13 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * Session binding and remains mounted across main-panel navigation.
      */
     'shell.bottom': { kind: 'single'; scope: 'root' }
+    /**
+     * Persistent content seat above the columns and below the overlay layer.
+     * A full-area workspace (the ecommerce platform console) keeps its webview
+     * mounted here while another main panel is selected; the occupant hides the
+     * seat with visibility rather than unmounting it.
+     */
+    'shell.console': { kind: 'single'; scope: 'root' }
     /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers. Deliberately generic and unowned by any feature: a badge, a
@@ -185,8 +193,28 @@ export function apply(ctx: ClientContext): void {
       getSnapshot: () => instance.getSnapshot().panelInfo,
       subscribe: listener => instance.subscribe(listener),
     }
+    const readSidebar = (): SidebarInfo => {
+      const info = instance.getSnapshot().layoutInfo
+      return { collapsed: info.viewportWidth < SIDEBAR_AUTO_COLLAPSE ? !info.narrowExpanded : info.sidebar === 0 }
+    }
+    let sidebarSnapshot = readSidebar()
+    const sidebarInfo: HostObservable<SidebarInfo> = {
+      // Refresh on read so a subscription that lands after a collapse still
+      // renders the current presentation; identity changes only when it flips.
+      getSnapshot: () => {
+        const next = readSidebar()
+        if (next.collapsed !== sidebarSnapshot.collapsed) sidebarSnapshot = next
+        return sidebarSnapshot
+      },
+      subscribe: listener => instance.subscribe(() => {
+        const next = readSidebar()
+        if (next.collapsed === sidebarSnapshot.collapsed) return
+        sidebarSnapshot = next
+        listener()
+      }),
+    }
     const layout = new LayoutController(instance.actions, id =>
-      ctx.slots.entries('main').some(entry => entry.options.key === id), panelInfo)
+      ctx.slots.entries('main').some(entry => entry.options.key === id), panelInfo, sidebarInfo)
     const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo: layout.panelInfo } })
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
@@ -197,6 +225,7 @@ export function apply(ctx: ClientContext): void {
         'main': { kind: 'keyed', scope: 'root' },
         'rightbar': { kind: 'single', scope: 'root' },
         'shell.bottom': { kind: 'single', scope: 'root' },
+        'shell.console': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
         'shell.leading': { kind: 'single', scope: 'root' },
       },

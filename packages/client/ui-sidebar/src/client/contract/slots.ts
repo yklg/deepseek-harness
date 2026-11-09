@@ -212,6 +212,11 @@ export type SidebarRootInjected = {
   setPinned: (id: string, pinned: boolean) => void
   /** Record activation of an official navigation control without changing navigation. */
   trackEntryClick: (attributes: ProductEventMap['sidebar_menu_click']) => void
+  /**
+   * Product compact mode: hide the harness brand block and the New Session
+   * button; the panel rows, workspace/session list, and footer stay usable.
+   */
+  compact: boolean
   /** Private reactive sources bound to framework selector hooks. */
   hooks: {
     panels: ObservableSnapshot<readonly SidebarPanelMetadata[]>

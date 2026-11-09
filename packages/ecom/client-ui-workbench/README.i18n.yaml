@@ -3,26 +3,26 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/ecom/client-ui-workbench/README.md
 /:
-  en: ae8cf137fc969b17
-  zh: bd8109777feabfa6
+  en: 8e146b151d6fef15
+  zh: 62057e7986c6c0fb
 /deepseek-ai-dsh-client-ui-workbench:
   en: 5dd2cb5d89eab38f
   zh: d1f6bbd64937ddbe
 /deepseek-ai-dsh-client-ui-workbench/summary:
-  en: 2d85b74662811a37
-  zh: 3450ace393374cc9
+  en: ce2f0409f3196608
+  zh: 07c6b35ea36c3aa7
 /deepseek-ai-dsh-client-ui-workbench/table-of-contents:
   en: b563e4ec4727d0de
   zh: e748d178a70e42b9
 /deepseek-ai-dsh-client-ui-workbench/use-this-package:
-  en: b66a93afc9c06b65
-  zh: 0bd58c77b6160f11
+  en: 91ba51cbffa14b7d
+  zh: 281984f71868c636
 /deepseek-ai-dsh-client-ui-workbench/understand-the-implementation:
-  en: e30a96cd36ce8152
-  zh: a22bb90674de7efd
+  en: 45a8cf6de650459f
+  zh: cfc321dede948849
 /deepseek-ai-dsh-client-ui-workbench/further-exploration:
-  en: 25d993866c79e794
-  zh: d5446a06a41e0377
+  en: 66f790e805f8197c
+  zh: f1109bc7710fcc94
 /deepseek-ai-dsh-client-ui-workbench/model-experience:
   en: 215e7ba838619b7b
   zh: e61c78b7d37628ed
@@ -30,8 +30,8 @@
   en: 40843372e20b277e
   zh: 43fa87099a0987ae
 /deepseek-ai-dsh-client-ui-workbench/model-experience/workbench-browser-surfaces/what-the-model-sees:
-  en: bb98557789d67aed
-  zh: f6c851c6e3a1cfa1
+  en: bfc7d8a946a6e5de
+  zh: 1d7926ea19ac0558
 /deepseek-ai-dsh-client-ui-workbench/model-experience/workbench-browser-surfaces/token-effect:
   en: b4de7a7d1902a50c
   zh: 16153100afc7e017
@@ -39,8 +39,8 @@
   en: 162a5e4865d11114
   zh: 4681f060128b4b22
 /deepseek-ai-dsh-client-ui-workbench/known-limitations-and-deferred-work:
-  en: a7ceb96ea15a9387
-  zh: fe21ee2d82ba7978
+  en: 7e511d24f0766b5c
+  zh: 51a751b134ccebb7
 /deepseek-ai-dsh-client-ui-workbench/known-limitations-and-deferred-work/dev-note:
   en: 0a1253c6f7b5e8b9
   zh: 9f56528562c7c914

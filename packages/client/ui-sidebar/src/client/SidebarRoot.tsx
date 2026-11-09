@@ -13,6 +13,11 @@
  * Through the browser's hookContext, the shell also hands it the scroller hook
  * that continues wheel scrolling over the sidebar viewport into its list.
  *
+ * Product compact mode (the injected `compact` fact) trims the wide shell to
+ * navigation: the brand row keeps only its mark and the principal New Session
+ * button is omitted, while the panel rows, the workspace/session region, and
+ * the footer keep their full behavior. The stock harness leaves it off.
+ *
  * The column also owns whether the scroll regions nested in it draw a
  * scrollbar at all: the shell tracks the pointer and rebinds ui-theme's
  * scrollbar indirection away while it is elsewhere, so a list the user is not
@@ -157,6 +162,7 @@ export function SidebarRoot({
   selectPanel,
   setPinned,
   trackEntryClick,
+  compact,
   useRemoteAccess,
   usePanels,
   useEntryPins,
@@ -327,14 +333,25 @@ export function SidebarRoot({
       {/* macOS hiddenInset titlebar: the strip shares the row with the
           traffic lights and keeps the toggle at the sidebar's top-right. */}
       {darwinDesktop && <div className={css.topStrip} data-window-drag>{toggle}</div>}
-      <div className={css.logoRow} data-window-drag>
+      <div className={clsx(css.logoRow, wide && compact && css.compactLogoRow)} data-window-drag>
         {/* Expanded, the brand doubles as a New Session shortcut while the
             access snapshot allows `session/create` — except on
             macOS, where it stays part of the logo row's window-drag surface
             (a button would subtract itself through the global no-drag rule);
             the collapsed rail's logo is the expand toggle below instead.
-            Mouse clicks on the local-build fallbacks copy the version instead. */}
+            Mouse clicks on the local-build fallbacks copy the version instead.
+            Product compact mode keeps the mark alone: no wordmark, version
+            badge, copy affordance, or New Session button semantics. */}
         {wide && (() => {
+          if (compact) {
+            return (
+              <span className={clsx(css.brand, css.wide, css.compactBrand)}>
+                <span className={css.brandMark}>
+                  {renderSlot('sidebar.brand.mark', { size: 24 }, { fallback: <FishLogo size={24} /> })}
+                </span>
+              </span>
+            )
+          }
           const identity = (
             <span className={css.brandIdentity} aria-hidden="true">
               <span className={css.brandMark}>
@@ -378,8 +395,9 @@ export function SidebarRoot({
         {!darwinDesktop && toggle}
       </div>
 
-      {/* The label fades before the hover/focus shortcut, including on translucent backgrounds. */}
-      {canStartSession && (
+      {/* The label fades before the hover/focus shortcut, including on translucent backgrounds.
+          Product compact mode omits the principal New Session button in both widths. */}
+      {canStartSession && !compact && (
         <Tooltip label={t('session.new.label')} shortcutKeys={newShortcut?.keys} delayMs={500} side={captionTooltipSide} disabled={wide}>
           <button
             type="button"

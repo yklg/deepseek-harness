@@ -18,6 +18,7 @@ kind: "package-reference"
 - [Conversation 组装](#conversation-assembly)
 - [已发送用户文本](#sent-user-text)
 - [Shell 与标准 props](#shell-and-standard-props)
+- [嵌入式会话](#embedded-conversation)
 - [临时 composer entry](#temporary-composer-entries)
 - [模型体验](#model-experience)
 - [已知限制与暂缓事项](#known-limitations-and-deferred-work)
@@ -141,6 +142,15 @@ Send 和 Stop 按钮禁用时不显示提示气泡，轮次结束后由 Stop 切
 当会话被其他写句柄占用时，发送失败的 toast 提示用户退出其他正在运行的 DSH 后重试。
 
 在获得焦点的 Chat 或 Composer 中连续独立按下两次 Esc，可停止当前运行轮次并保留排队消息。间隔由 shortcuts 插件的 `stopSequenceMs` 配置决定，默认 500 ms。菜单、审批、模态层、终端、内嵌网页、输入法、重复按键，以及输入区域、Session 或轮次变化会清空序列。快捷键与 Stop 按钮调用同一作用域取消操作。插件将 Stop 注册为 `input` 展示分组中的固定操作。该注册使普通 Esc 不能分配给可编辑快捷键，并为 Stop 按钮的悬停和键盘聚焦提示提供 `Esc Esc` 序列。
+
+<a id="embedded-conversation"></a>
+## 嵌入式会话
+
+`EmbeddedConversation` 是 `/client` 公开导出的组件，把共享 Conversation 主体（记录、Composer 与空白 Hero）渲染为次级展示面，例如产品自有的浮动面板或 overlay 窗口。它以 `variant: 'embedded'` 打开 `conversation.content` Factory，并把该次出现的 `views` 本地位置固定为 Chat View，因此这次出现没有主 Header 和内容宽度手柄，而 Composer 仍然可输入。phase 与主 shell 采用同一判定：存在 active target、Session 正在运行或 Session 非空白时渲染记录；空白 Session 落在 Hero；仍在回放的空白 Session 停留在 settling 布局。
+
+同一实现也注册为公开 Factory `conversation.embedded`（scope 为 `session-maybe`，无输入 props）。宿主 Slot 组件通过标准的 `renderFactorySlot` seat 渲染它；导出的组件形式供可导入本包运行时值的宿主使用，而 `packages/client` 下的 feature 包因 client bundle 不得导入其他插件的运行时值，改为通过该 Factory 承载展示面。两种入口共用同一 phase 判定，并在 `conversation.content` Factory 未注册时都渲染为空。
+
+导出组件的 props 是 `session` 或 `session-maybe` Slot entry 收到的可选会话标准 kit：slot 渲染器提供 `useSession`、`useConversation`、`useSessions` 与 `renderFactorySlot`，渲染器不发布该 kit 的注册无法使用它。目标 Session 始终来自外层 Session scope，从不来自组件 prop。严格 session 宿主在 Slot 渲染外包裹注入的 `SessionProvider`，其中传入一个已 retain 的 `SessionReference`；`shell.overlay` 这类 root 作用域 overlay 声明一个 `session-maybe` 子 Slot，既可以不包裹直接渲染以继承当前主视图 Session，也可以包在 `SessionProvider` 中固定一个显式引用。[ui-sidebar-right](../ui-sidebar-right/README.zh.md) 用同样的声明方式保留会话标签页，ui-subagent 的右侧栏会话为一个保留的子 Session 渲染该组件。没有目标 Session 时这次出现渲染 Hero 与其 Composer；`conversation.content` Factory 尚无注册时渲染为空。
 
 <a id="temporary-composer-entries"></a>
 ## 临时 composer entry

@@ -59,6 +59,20 @@ describe('createLayoutStore', () => {
     expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
   })
 
+  it('sets the sidebar collapsed state explicitly at both width classes', () => {
+    const { store, actions } = createLayoutStore({ storage: null }).create()
+    actions.setSidebar(400)
+    actions.setSidebarCollapsed(true)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(0)
+    actions.setSidebarCollapsed(false)
+    expect(store.getSnapshot().layoutInfo.sidebar).toBe(280)
+    actions.setViewportWidth(980)
+    actions.setSidebarCollapsed(true)
+    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(false)
+    actions.setSidebarCollapsed(false)
+    expect(store.getSnapshot().layoutInfo.narrowExpanded).toBe(true)
+  })
+
   it('keeps the sidebar preference while toggling its narrow override', () => {
     const { store, actions } = createLayoutStore({ storage: null }).create()
     actions.setSidebar(400)

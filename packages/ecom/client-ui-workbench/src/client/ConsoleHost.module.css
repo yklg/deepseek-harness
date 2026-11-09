@@ -1,0 +1,96 @@
+/* Persistent seat for the platform console. The workspace shows this host with
+   visibility so the webview keeps running while another main panel is selected;
+   it is never display:none and never unmounted. The left edge starts after the
+   harness sidebar track the frame publishes. */
+.host {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--dsh-frame-sidebar-width, 0px);
+  display: flex;
+  flex-direction: column;
+  background: var(--dsw-alias-bg-base);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.host[data-ecom-console-active='true'] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Console top bar: navigation toggle, active platform, login state, and shell actions.
+   Content clears the window-chrome leading seat when the frame mounts it. */
+.bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 12px;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 12px;
+  padding-inline-start: max(12px, var(--dsh-frame-leading-clearance, 0px));
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.title {
+  margin: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.loginState {
+  flex: 0 0 auto;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+/* Single status line chosen by the console state; never stacked. */
+.hint {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 12px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-layer-1);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.error {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 12px;
+  color: var(--dsw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The live surface mounts here; the seat keeps this node for the plugin's lifetime. */
+.viewport {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}

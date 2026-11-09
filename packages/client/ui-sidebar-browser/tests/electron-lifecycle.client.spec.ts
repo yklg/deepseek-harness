@@ -25,6 +25,7 @@ it('retains page zoom across navigation, clamping and guest recreation', async (
   expect(first.setZoomFactor).not.toHaveBeenCalled()
   first.emit('dom-ready')
   expect(first.setZoomFactor).toHaveBeenLastCalledWith(1.5)
+  expect(h.frame.getSnapshot().targetId).toBe(first.state.webContentsId)
   first.state.url = target.url
   first.emit('did-navigate')
   expect(first.setZoomFactor).toHaveBeenLastCalledWith(1.5)

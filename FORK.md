@@ -8,10 +8,11 @@
 
 | 区域 | 文件 | 改动 | 回滚点 |
 |---|---|---|---|
-| 布局互换 | `packages/client/ui-layout/src/client/{columns.ts,AppFrame.tsx,AppFrame.module.css,stores.ts}` + tests | 列序 `sidebar → rightbar(浏览器/中控) → center(对话)`；列宽常量、拖拽方向、持久化；全屏时 frame 打 `data-window-drag-suppressed` | `git revert` 该目录提交 |
+| 产品外壳 | `packages/client/ui-layout/src/client/{AppFrame.tsx,service.ts}`、`packages/client/ui-sidebar/src/client/{index.ts,contract/slots.ts,SidebarRoot.tsx,SidebarRoot.module.css}`、`packages/ecom/client-ui-workbench/src/client/{startup.ts,index.ts,WorkbenchPage.tsx,ConsoleHost.tsx}` + tests | 启动默认工作台 + 默认收起 harness 侧栏；`ILayout.selectStartupPanel` 启动门；frame `--dsh-frame-sidebar-width` 几何变量；可选 `ctx.productNavigation` 紧凑侧栏（隐藏 harness 品牌块与 New Session 主按钮）；产品顶栏 / Hero 平台卡 / 中控窗口化 / 登录态刷新 | 按文件回滚（ui-sidebar 紧凑模式为可选服务，缺省行为不变） |
+| 布局互换 | `packages/client/ui-layout/src/client/{columns.ts,AppFrame.tsx,AppFrame.module.css,stores.ts,service.ts,index.ts}` + tests | 列序 `sidebar → rightbar(浏览器/中控) → center(对话)`；列宽常量、拖拽方向、持久化；全屏时 frame 打 `data-window-drag-suppressed`；`shell.console` 常驻宿主座、`ILayout.setSidebar`/`sidebarInfo` | `git revert` 该目录提交 |
 | 右栏镜像 | `packages/client/ui-sidebar-right/src/client/shell/{SidebarRight.tsx,SidebarRight.module.css}` + tests | 面板左侧锚定、滑动/隐藏方式、平台全屏规则；全屏面板打 `data-window-drag-surface` | 同上 |
 | Desktop 外壳 | `apps/desktop/src/{browser-guests.ts,host-process.ts,main.ts,preload-browser.ts,ipc.ts,project-manager.ts}` + tests | persist 分区、clearStorage、AutomationBroker、profile 迁移 | 按文件回滚 |
-| 浏览器小改 | `packages/client/ui-sidebar-browser/src/client/{browser,electron,view,index.ts,locales.ts}`、`client/web/src/{base.css,window-drag/regions.ts}` | 内嵌网页缩放（per-tab 持久化、toolbar、快捷键、8 语言）；全屏拖拽抑制/恢复标记；README | 按文件回滚 |
+| 浏览器小改 | `packages/client/ui-sidebar-browser/src/client/{browser,electron,view,index.ts,locales.ts,surface/BrowserSurface.ts,types.ts}`、`client/web/src/{base.css,window-drag/regions.ts}` | 内嵌网页缩放（per-tab 持久化、toolbar、快捷键、8 语言）；全屏拖拽抑制/恢复标记；`ctx.browserSurface` 服务与 `targetId`/`backgroundThrottling`；README | 按文件回滚 |
 | 产品包 | `packages/ecom/*` | 新增，无上游对应 | 删除目录 |
 | 品牌/打包 | `apps/desktop/scripts/electron-builder-config.mjs`、`resources/icon*`、`locale.ts`、`.env.windows` | 产品名/图标/打包配置 | 按文件回滚 |
 | Web e2e | `apps/web/tests/{sidebar-right,ecom-workbench}.e2e.ts`、`apps/web/tsconfig.json` | 新布局/工作台全链路断言；host-plane 用例排除 | 按文件回滚 |
@@ -50,6 +51,8 @@
 - [x] W1-3 云营只读适配器：HMAC-SHA256 签名 GET（今日看板/商品/评论）、单次超时、有界重试、响应校验、脱敏日志；凭据经 `ctx.credentials`（环境变量回退）。
 - [x] W1-4 AI 草稿工具：`ecom_draft_product_script` / `ecom_draft_quick_replies` / `ecom_draft_comment_reply`，只返回草稿；`ecom_send_message`、`ecom_change_price`、`ecom_set_listing`、`ecom_set_inventory` 的 `tools/pre-execute` 审批策略已就位（当前无写执行器）。
 - [x] W1-5 集成验证：`apps/web/tests/ecom-workbench.e2e.ts` 覆盖产品 bundle 的 launcher + live-console + 无桌面通道降级；`apps/web/tests/sidebar-right.e2e.ts` 按新轨道/fullscreen 行为更新（fullscreen 瞬时交接、grip 在轨道右缘、split 前加宽到 980px）。两个文件 23/23 tests PASS（2026-11-08）。
+- [x] M0/M1 平台选择 + 常驻中控增量（2026-11-08）：`shell.console` 常驻宿主座、`ctx.browserSurface` 服务（含 `targetId`、per-lease `backgroundThrottling`）、平台注册表/登录探针/偏好存储、`ConsoleController`（surface 生命周期 + 生成号防竞态 + 90s 只读登录探针 + 首个探针等待 dom-ready targetId + 失败 5s 快速重试）、`ConsoleHost` 中控顶栏、`WorkbenchPage` 平台选择区、8 语言平台文案（26 key）。ecom 客户端 8 文件 / 94 tests、workbench-server 5 文件 / 48 tests PASS；定向 tsc/oxlint/i18n/export-jsdoc/依赖/文档门禁 PASS。真实扫码登录、隐藏宿主保活与节流、宿主几何、启动自动进入门未验证，见下节。
+- [x] M1 工作台优先改造（2026-11-09）：默认主面板=电商工作台且 harness 侧栏默认收起（`startup.ts` + `ILayout.selectStartupPanel`）；产品顶栏（品牌 / AI 助手 / 导航）；工作台页重做为 Hero 平台卡 + 中控状态 + 今日看板 + 系统状态行；中控窗口化（`left = --dsh-frame-sidebar-width`、`right = 0`）并新增「刷新登录状态 / 导航 / AI 助手」；`ConsoleController.refreshLogin()` + 窗口 focus/visibility 刷新；侧栏自动收起；ui-sidebar 可选 `ctx.productNavigation` 紧凑模式（隐藏品牌块与 New Session 主按钮）。ecom 9 文件 / 115 tests、相关 client 32 文件 / 350 tests；`build:artifacts`、`build:check`、Web e2e 全绿；本机 dev 实例 CDP 验证启动页 / 紧凑侧栏 / 中控全宽与展开导航矩形，见下节。
 
 ## W0 验证记录（2026-11-08）
 
@@ -77,6 +80,24 @@
 - 修复：`apps/desktop/src/browser-guests.ts` 将 Electron 的 “An object could not be cloned.” 拒绝映射为 `result/not-json`（此前无 code，落到 `workbench/handler-failed` → `workbench/protocol`）；`apps/desktop/tests/browser-guests.spec.ts` 新增用例，18/18 PASS。
 - 恢复标签复验（2026-11-08，优雅关闭后重启）：浏览器标签恢复了直播中控地址且 lease 已存在；页面尚未加载时 `attach` 即成功，点“前往”加载后仍是同一 targetId，`evaluate document.title` → `"直播中控台"`，`targets` 列出该 target，`detach` 正常。首个实例的 `target/not-found` 未再复现，更像会话/面板切换期间的瞬时释放，不再按 lease 缺口跟踪。
 - 现场：验证用的是 example.com；结束后已把该标签导航回直播中控 URL。
+
+## M0/M1 验证记录：平台选择 + 常驻中控（2026-11-08）
+
+- 单测：`packages/ecom/client-ui-workbench/tests` 8 文件 / 94 tests PASS（platforms 14、platform-preferences 23、console-controller 10、platform-probe 10、console-host 11、page 13、source 7、console 6）；`packages/ecom/workbench-server/tests` 5 文件 / 48 tests PASS。
+- 类型：`pnpm exec tsc -b packages/ecom/client-ui-workbench/tsconfig.json packages/ecom/workbench-server/tsconfig.json` PASS。
+- 门禁：`verify-client-ui-i18n`（1288 files）、`verify-export-jsdoc`、`verify-client-packages`、`verify-package-dependencies`、`test:docs` PASS；`oxlint` 对 ecom 收改变更 0 problem。
+- Web e2e（keyless，均需 `env -u ELECTRON_RUN_AS_NODE`）：`apps/web/tests/ecom-workbench.e2e.ts` 1/1 PASS，覆盖 Web 降级（平台卡禁用、团购占位禁用、desktopOnly 提示、auto-enter 开关可见）与原有 launcher/live-console/无桌面通道路径；`apps/web/tests/sidebar-right.e2e.ts` 22/22 PASS。本机环境注意：会话带有 `ELECTRON_RUN_AS_NODE=1`，否则 Host 误判为 Electron Node-mode，`status` 会等 IPC 应答 20s 后失败。
+- `apps/web/tests/window-drag-coverage.e2e.ts` 全文件运行 12/13：三次运行失败点在不同探测点（折叠列 header / 全屏 strip），两个失败探测点单测运行均通过；判定为本机 e2e 环境（缓存 Chromium 1243 与 Playwright 1.61.1 期望 1228 不匹配 + 时序）导致的抖动，非产品回归，最终以 CI 固定浏览器为准。
+- 未验证（不得声称闭环）：真实 Electron webview 内抖店/百应扫码登录；隐藏宿主下 webview 是否真保持活跃；`setBackgroundThrottling(false)` 在 macOS App Nap/窗口遮挡下的真实效果；broker attach 中控 guest 的 target 精确匹配（当前按平台 origin attach，同 origin 多 guest 会 `target/ambiguous`）；宿主几何与左导航自动收起；启动时自动进入的启动门；`build:artifacts` / `build:check` / Web e2e 结果见下。
+- 交接文档：`HANDOFF.md` 第 3、6、7 节记录了本次落地与剩余阻塞。
+
+## 工作台优先改造验证记录（2026-11-09）
+
+- 单测：`packages/ecom/client-ui-workbench/tests` 9 文件 / 115 tests PASS（startup 6、console-controller 14、console-host 14、page 21、platforms 14、preferences 23、probe 10、source 7、console 6）；`packages/ecom/workbench-server/tests` 48 PASS；`packages/client/ui-layout`+`ui-sidebar`+`ui-sidebar-browser`+`apps/desktop` broker 32 文件 / 350 tests PASS。
+- 类型/构建：`tsc -b`（ecom）、`tsc -p tsconfig.client.json`、`build:artifacts`（8/8）、`build:check`（2/2）PASS；`verify-client-ui-i18n`（1289 files）、`verify-export-jsdoc`、`verify-package-readme-summaries`、`verify-translation-pairing` PASS。
+- Web e2e（`env -u ELECTRON_RUN_AS_NODE` + 缓存 Chromium）：`apps/web/tests/ecom-workbench.e2e.ts` 1/1 PASS，断言启动即工作台、侧栏默认收起、展开为紧凑侧栏（无 DSH 品牌/New Session）、平台卡 Web 降级、live-console 路径。
+- 本机 dev 实例（隔离 home/user-data）CDP 验证：启动主面板=工作台、`data-sidebar-collapsed=true`；打开导航后侧栏无品牌块/新会话按钮；中控激活时 `hostRect.left=0`（侧栏收起）与 `280`（导航展开）；产品顶栏品牌起点 x=160，避让 macOS `shell.leading` 控件（88..152）；`切换平台` 返回产品首页。截图见 `/tmp/final-3-home.png`、`/tmp/dev-new-console.png`、`/tmp/final-2-console-nav.png` 等工作区外临时文件（未入库）。
+- 未验证/限制：真实扫码后登录态刷新（需要用户扫码）；`autoEnter` 冷启动自动进中控的真机复核；Windows/Web 收起 rail（56px）视觉；AI 助手返回工作台经导航（无浮动返回按钮）；右栏轨道与中控同时展开时被中控覆盖。
 
 ## W1 修复记录：全屏按钮吞点击与内嵌网页缩放（2026-11-08）
 

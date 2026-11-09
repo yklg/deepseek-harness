@@ -4,7 +4,6 @@ import type {
   ISessions, SessionReference,
 } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { ResourceProvider } from '@deepseek-ai/dsh-client-resources/client'
-import type { ConversationViewsProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { SidebarRightTabDefinition } from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type {
   PropsRenderFactories, PropsRenderSlots, PropsRuntime, TranslateNS,
@@ -117,31 +116,21 @@ function subagentChatResourceProvider(sessions: ISessions): ResourceProvider<'su
   }
 }
 
-/** Fixed Chat selection used by an embedded Conversation occurrence. */
-export function FixedChatConversationView(props: ConversationViewsProps) {
-  return <>{props.renderSlot('conversation.session', { view: 'chat' })}</>
-}
-
 /** Props supplied to the child-Session Conversation host. */
 export type ConversationSlotPanelProps = PropsRuntime<'sidebar.chat.conversation'> & PropsRenderFactories
 
-/** Render the shared Conversation content for one explicitly provided child Session. */
-export function ConversationSlotPanel({
-  sessionId, useSession, useConversation, useSessions, renderFactorySlot,
-}: ConversationSlotPanelProps) {
-  const session = useSession(value => value)
-  const conversation = useConversation(value => value)
-  const active = conversation.activeTargets.size > 0
-    || (!session.blank && !session.awaitingFirstTurn)
-    || session.running
-  const shellPhase = active ? 'active' : session.promptAttempted ? 'engaging' : 'blank'
-  const summaryBlank = useSessions(state => state.byId[sessionId]?.blank)
-  const settling = (shellPhase === 'blank' && session.openState === 'loading' && summaryBlank !== true)
-  const hero = shellPhase === 'blank' && (session.openState === 'open' || summaryBlank === true)
-  const phase = settling ? 'settling' : hero ? 'hero' : 'active'
-  return renderFactorySlot('conversation.content', { variant: 'embedded', phase, hero }, {
-    slots: { views: FixedChatConversationView },
-  })
+/**
+ * Render the shared embedded Conversation for one explicitly provided child Session.
+ * The body is ui-conversation's public `conversation.embedded` Factory, rendered
+ * through the standard Factory seat: a feature package may not import another
+ * plugin's runtime values, and the Factory keeps this panel free of private
+ * Conversation phase and View-selection logic.
+ * @param props - this Session-scoped Slot's standard kit and Factory render seat.
+ * @returns the shared embedded Conversation occurrence, or nothing while
+ * ui-conversation's Factory definition is not registered.
+ */
+export function ConversationSlotPanel({ renderFactorySlot }: ConversationSlotPanelProps) {
+  return <>{renderFactorySlot('conversation.embedded', {})}</>
 }
 
 /** Props supplied to the parent-Session Sidebar tab body. */

@@ -29,7 +29,7 @@ const MAX_PERSISTED_RIGHTBAR = 10_000
  */
 function defaultLayoutStorage(): LayoutStorage | null {
   try {
-    return globalThis.localStorage ?? null
+    return globalThis.localStorage
   } catch {
     return null
   }
@@ -112,6 +112,7 @@ type LayoutActions = {
   selectPanel: (draft: LayoutState, panelId: MainPanelId | null) => void
   retainMainPanels: (draft: LayoutState, panelIds: readonly string[]) => void
   setSidebar: (draft: LayoutState, px: number) => void
+  setSidebarCollapsed: (draft: LayoutState, collapsed: boolean) => void
   toggleSidebar: (draft: LayoutState) => void
   setViewportWidth: (draft: LayoutState, width: number) => void
   setRightbar: (draft: LayoutState, px: number) => void
@@ -169,6 +170,14 @@ export function createLayoutStore(options: LayoutStoreOptions = {}): EngineStore
       setSidebar: (d, px: number) => {
         d.layoutInfo.rightbarInstant = false
         d.layoutInfo.sidebar = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX)
+      },
+      // The ecommerce console collapses the navigation while it owns the main
+      // area; an explicit setter lets it restore the state it observed instead
+      // of inferring a toggle count.
+      setSidebarCollapsed: (d, collapsed) => {
+        d.layoutInfo.rightbarInstant = false
+        if (d.layoutInfo.viewportWidth < SIDEBAR_AUTO_COLLAPSE) d.layoutInfo.narrowExpanded = !collapsed
+        else d.layoutInfo.sidebar = collapsed ? 0 : d.layoutInfo.sidebar === 0 ? SIDEBAR_DEFAULT : d.layoutInfo.sidebar
       },
       // Narrow toggles flip only the override: the width preference survives
       // untouched, so re-widening restores the pre-squeeze layout.

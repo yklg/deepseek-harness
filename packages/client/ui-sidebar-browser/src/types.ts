@@ -18,8 +18,12 @@ export interface DesktopBrowserOpenRequest {
 
 /** Origin-scoped operations; no Electron objects or arbitrary IPC cross this interface. */
 export interface DesktopBrowserBridge {
-  /** @param workspace - resolved storage account. @returns one approved guest reservation. */
-  acquire(workspace: string): Promise<DesktopBrowserReservation>
+  /**
+   * @param workspace - resolved storage account (a scoped storage key is accepted).
+   * @param options - guest throttle policy; `backgroundThrottling: false` keeps a hidden console guest running.
+   * @returns one approved guest reservation.
+   */
+  acquire(workspace: string, options?: { readonly backgroundThrottling?: boolean }): Promise<DesktopBrowserReservation>
   /** @param lease - the caller's reservation. @returns after its guest has been destroyed. */
   release(lease: DesktopBrowserLeaseId): Promise<void>
   /** @param lease - originating guest. @param listener - approved URL consumer. @returns unsubscribe callback. */

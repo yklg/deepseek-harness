@@ -385,6 +385,20 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
         widthControls: { scope: 'root'; props: ConversationWidthControlsInputProps }
       }
     }
+    /**
+     * Reusable embedded Conversation surface for a secondary display area. The
+     * occurrence renders the shared `conversation.content` body with the Chat
+     * View fixed, and targets the Session of the surrounding scope; a host Slot
+     * component renders it through its standard `renderFactorySlot` seat, so a
+     * feature package that may not import this package's runtime values can
+     * still host the shared surface. ui-subagent's Sidebar chat is the shipped
+     * consumer; a host outside `packages/client` may instead register the
+     * exported `EmbeddedConversation` Component into its own session-optional
+     * Slot.
+     */
+    'conversation.embedded': {
+      scope: 'session-maybe'
+    }
   }
 
   interface GlobalStandardProps {

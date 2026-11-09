@@ -130,6 +130,8 @@ describe('ui-layout client apply', () => {
     expect(() => { layout.selectPanel('missing' as MainPanelId) }).toThrow('main panel "missing" is not registered')
     layout.toggleSidebar()
     expect(instance.getSnapshot().layoutInfo.sidebar).toBe(0)
+    // A first read after the collapse must not serve the boot-time snapshot.
+    expect(layout.sidebarInfo.getSnapshot()).toEqual({ collapsed: true })
     const host = rendererHost()
     expect(host.storeOf(entry, undefined)).toBe(instance)
     const panelInfo = host.root.getSnapshot().hooks.panelInfo!

@@ -25,6 +25,26 @@ export type {
 } from './contract/slots.ts'
 export type { SidebarKey } from './locales.ts'
 
+/**
+ * Optional product presentation overrides provided by a product bundle that
+ * embeds the harness: the stock sidebar stays unchanged when this service is absent.
+ */
+export interface ProductNavigationPresentation {
+  /**
+   * Compact product mode: omit the harness brand block and the New Session
+   * button from the wide sidebar. Panel rows, the workspace/session list, and
+   * the footer keep working so navigation remains possible.
+   */
+  readonly compact: boolean
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Product presentation overrides; absent for the stock harness sidebar. */
+    productNavigation?: ProductNavigationPresentation
+  }
+}
+
 /** The section occupant receives the scroller hook from each render's hookContext. */
 const SIDEBAR_SECTION_INJECT: SidebarSectionInjected = {
   hooks: { sectionScroller: (_standard, { useSectionScroller }) => useSectionScroller },
@@ -83,6 +103,7 @@ export function apply(ctx: ClientContext): void {
     selectPanel: (id) => { ctx.layout.selectPanel(id) },
     setPinned: panelPins.setPinned,
     trackEntryClick: (attributes) => { ctx.get('productAnalytics')?.track('sidebar_menu_click', attributes) },
+    compact: ctx.get('productNavigation')?.compact === true,
     hooks: { panels, shortcuts: ctx.shortcuts.catalog, entryPins: panelPins.unpinned, entryActions },
   })
   ctx.slots.inject('sidebar', function* () {

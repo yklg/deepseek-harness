@@ -39,6 +39,7 @@ import { EnterBehaviorRow } from './settings/EnterBehaviorRow.tsx'
 import type { EnterBehaviorRowInjected } from './settings/EnterBehaviorRow.tsx'
 import { ConversationRoot } from './skeleton/ConversationRoot.tsx'
 import { ConversationContent } from './skeleton/ConversationContent.tsx'
+import { EmbeddedConversation } from './skeleton/EmbeddedConversation.tsx'
 import { ConversationPanel } from './skeleton/ConversationPanel.tsx'
 import { ConversationHeader } from './skeleton/ConversationHeader.tsx'
 import { ConversationSession, ConversationSessionHeader } from './skeleton/ConversationSession.tsx'
@@ -332,6 +333,12 @@ export function apply(ctx: Context, config: Config = Config({})): void {
       }
     },
   })
+
+  // Reusable embedded surface exposed as a Factory as well as the exported
+  // Component: a feature package under packages/client may not import another
+  // plugin's runtime value (bundle purity / module edges), so its host Slot
+  // component renders this Factory through its own renderFactorySlot seat.
+  slots.registerFactory({ name: 'conversation.embedded', scope: 'session-maybe' }, EmbeddedConversation)
 
   const registerConversationRoot = () => slots.register({
     name: 'main.conversation',

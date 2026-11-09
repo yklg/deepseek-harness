@@ -11,7 +11,7 @@ it('clears a failed load when the main page retries without a toolbar command', 
     loadURL: vi.fn(async () => {}), getURL: () => url, getTitle: () => 'Recovered',
     canGoBack: () => false, canGoForward: () => false, clearHistory: vi.fn(),
     goBack: vi.fn(), goForward: vi.fn(), reload: vi.fn(), isLoading: () => loading,
-    setZoomFactor: vi.fn(),
+    setZoomFactor: vi.fn(), getWebContentsId: () => 42,
   })
   const bridge: DesktopBrowserBridge = {
     acquire: vi.fn(async () => ({ lease: 'lease' as DesktopBrowserLeaseId, partition: 'partition' })),
@@ -30,6 +30,7 @@ it('clears a failed load when the main page retries without a toolbar command', 
     frame.loadUrl({ kind: 'https', url: 'https://example.test/', title: 'Example' })
     await vi.waitFor(() => { expect(host.firstElementChild).toBe(element) })
     element.dispatchEvent(new Event('dom-ready'))
+    expect(frame.getSnapshot().targetId).toBe(42)
     element.dispatchEvent(Object.assign(new Event('did-fail-load'), {
       isMainFrame: true, errorCode: -105, errorDescription: 'ERR_NAME_NOT_RESOLVED',
     }))

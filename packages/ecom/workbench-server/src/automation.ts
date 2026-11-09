@@ -137,7 +137,10 @@ function withinRule(origin: RequestOrigin, rule: HostRule): boolean {
   return rule.kind === 'suffix' && (origin.host === rule.value || origin.host.endsWith(`.${rule.value}`))
 }
 
-/** Validate one deployment allowlist entry at load. */
+/**
+ * Validate one deployment allowlist entry at load.
+ * @param entries - configured host rules to validate.
+ */
 export function validateAllowedHosts(entries: readonly string[]): void {
   for (const entry of entries) hostRule(entry)
 }
@@ -191,6 +194,7 @@ export class WorkbenchAutomation {
   }
 
   /**
+   * Subscribe to automation lifecycle events.
    * @param listener - receives lifecycle events.
    * @returns unsubscribe callback.
    */

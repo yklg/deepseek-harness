@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
-  boundedResize, FLOAT_RESISTANCE, legalFloatRect, resistedRect, unresistedRect,
+  boundedResize, FLOAT_RESISTANCE, legalFloatRect, resolveFloatBounds, resistedRect, unresistedRect,
 } from '../src/engine/geometry.ts'
 import type { FloatBounds } from '../src/engine/geometry.ts'
 import { FLOAT_MIN_SIZE } from '../src/index.ts'
@@ -114,5 +114,32 @@ describe('boundedResize', () => {
 
   it('leaves a size that fits unchanged', () => {
     expect(boundedResize(PANEL, VIEWPORT, FLOAT_MIN_SIZE)).toEqual(PANEL)
+  })
+})
+
+describe('resolveFloatBounds', () => {
+  const base = { width: 1280, height: 800, windowsTitlebar: false, fullscreen: false,
+    captionHeight: undefined as number | undefined, topClearance: undefined as number | undefined }
+
+  it('adopts the shell-published top clearance (macOS traffic lights and leading controls)', () => {
+    expect(resolveFloatBounds({ ...base, topClearance: 48 }).top).toBe(48)
+    expect(resolveFloatBounds({ ...base, topClearance: 48, fullscreen: true }).top).toBe(48)
+  })
+
+  it('keeps the historical zero floor when the platform publishes no clearance', () => {
+    expect(resolveFloatBounds(base).top).toBe(0)
+    expect(resolveFloatBounds({ ...base, topClearance: Number.NaN }).top).toBe(0)
+  })
+
+  it('keeps the Windows caption floor and its 20px air', () => {
+    expect(resolveFloatBounds({ ...base, windowsTitlebar: true, captionHeight: 38 }).top).toBe(58)
+  })
+
+  it('drops only the caption in Windows fullscreen, keeping the 20px floor', () => {
+    expect(resolveFloatBounds({ ...base, windowsTitlebar: true, fullscreen: true, captionHeight: 38 }).top).toBe(20)
+  })
+
+  it('ignores the caption on platforms without the Windows titlebar', () => {
+    expect(resolveFloatBounds({ ...base, captionHeight: 38, topClearance: 48 }).top).toBe(48)
   })
 })

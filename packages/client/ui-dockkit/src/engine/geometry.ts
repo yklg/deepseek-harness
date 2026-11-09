@@ -216,6 +216,41 @@ export interface FloatBounds {
   readonly height: number
 }
 
+/** Host measurements that decide the floating viewport region. */
+export interface FloatBoundsSource {
+  /** Window width in CSS pixels. */
+  readonly width: number
+  /** Window height in CSS pixels. */
+  readonly height: number
+  /** Whether the native Windows caption row is present. */
+  readonly windowsTitlebar: boolean
+  /** Whether the window is in native fullscreen (the caption row is gone). */
+  readonly fullscreen: boolean
+  /** Caption height from the root's inline style; `undefined` when absent. */
+  readonly captionHeight: number | undefined
+  /** Shell-published clearance below the window's top chrome; `undefined` when not published. */
+  readonly topClearance: number | undefined
+}
+
+/**
+ * Resolve the viewport region floating panes stay inside. Windows keeps its
+ * caption-based floor; platforms that publish the shell top clearance (macOS
+ * traffic lights and shell.leading controls) adopt it so a floating pane never
+ * starts under window chrome.
+ * @param source - measured window chrome and viewport facts.
+ * @returns the floating viewport rectangle with its top floor resolved.
+ */
+export function resolveFloatBounds(source: FloatBoundsSource): FloatBounds {
+  const clearance = source.topClearance !== undefined && Number.isFinite(source.topClearance)
+    ? Math.max(0, source.topClearance) : 0
+  const caption = source.captionHeight !== undefined && Number.isFinite(source.captionHeight)
+    ? Math.max(0, source.captionHeight) : 0
+  const top = source.windowsTitlebar
+    ? (source.fullscreen ? 20 : caption + 20)
+    : clearance
+  return { top, width: source.width, height: source.height }
+}
+
 /** How far past an edge the resistance lets a dragged panel travel, at most, in CSS pixels. */
 export const FLOAT_RESISTANCE = 120
 

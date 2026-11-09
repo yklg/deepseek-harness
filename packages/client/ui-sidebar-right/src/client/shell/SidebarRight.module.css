@@ -113,6 +113,15 @@
   --dsh-dockkit-strip-inline-start: 10px;
 }
 
+/* A docked panel whose column reaches the window's left edge (macOS with the
+   sidebar collapsed) shares the hiddenInset traffic lights and the shell.leading
+   controls with its first pane's strip. Widen that strip's start inset to the
+   shell's published clearance — the same 160px the conversation title row uses —
+   instead of the fullscreen-only 88px, which keeps only the lights clear. */
+:global([data-platform='darwin']) :global([data-sidebar-collapsed]) .panel[data-sidebar-right-panel='push'] :global([data-dockkit-host='dock'][data-dockkit-column='0']) {
+  --dsh-dockkit-strip-inline-start: var(--dsh-frame-leading-clearance, 160px);
+}
+
 /* Window fullscreen hides the traffic lights (html[data-fullscreen], desktop
    preload); the first pane's strip keeps only the ordinary inset. */
 :global([data-platform='darwin'][data-fullscreen]) .panel[data-sidebar-right-panel='fullscreen'] :global([data-dockkit-host='dock'][data-dockkit-column='0']) {

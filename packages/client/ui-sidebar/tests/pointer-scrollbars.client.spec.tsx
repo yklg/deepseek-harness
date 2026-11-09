@@ -40,7 +40,7 @@ afterEach(() => {
  */
 function mountColumn(): { column: HTMLElement; quiet: () => boolean } {
   const view = render(
-    <SidebarRoot
+    <SidebarRoot compact={false}
       drawer={false}
       collapsed={false} width={300}
       useSessions={neverHook} useSessionStatus={useSessionStatus} useSessionRetainInfo={neverHook}

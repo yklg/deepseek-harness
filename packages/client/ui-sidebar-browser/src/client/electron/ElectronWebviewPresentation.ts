@@ -15,6 +15,7 @@ export interface WebviewElement extends HTMLElement {
   goForward(): void
   reload(): void
   isLoading(): boolean
+  getWebContentsId(): number
   setZoomFactor(factor: number): void
 }
 

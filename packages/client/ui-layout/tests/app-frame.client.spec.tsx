@@ -254,8 +254,10 @@ describe('AppFrame', () => {
 
   it('keeps the closed sidebar mounted at its 56px rail without a handle', () => {
     const { frame, instance, sidebarOwner, getByTestId, queryByTestId } = mountFrame()
+    expect(frame.style.getPropertyValue('--dsh-frame-sidebar-width')).toBe('280px')
     act(() => { instance.actions.toggleSidebar() })
     expect(tracks(frame)).toEqual([56, 0])
+    expect(frame.style.getPropertyValue('--dsh-frame-sidebar-width')).toBe('56px')
     expect(sidebarOwner()).toEqual({ collapsed: true, width: 56, drawer: false })
     expect(getByTestId('sidebar-content')).toBeTruthy()
     expect(frame.querySelector('[data-side="sidebar"]')).toBeNull()
@@ -273,6 +275,7 @@ describe('AppFrame', () => {
     expect(queryByTestId('shell.leading-content')).toBeNull()
     act(() => { instance.actions.toggleSidebar() })
     expect(tracks(frame)).toEqual([0, 0])
+    expect(frame.style.getPropertyValue('--dsh-frame-sidebar-width')).toBe('0px')
     expect(sidebarOwner()).toEqual({ collapsed: true, width: 0, drawer: false })
     expect(frame.querySelector('[data-shell-leading]')).not.toBeNull()
     expect(queryByTestId('shell.leading-content')).toBeTruthy()
@@ -296,6 +299,15 @@ describe('AppFrame', () => {
       expect(selectedSession).toBe(sessionId)
       expect(document.title).toBe(panelId === null ? 'Session title — DSH Local Build' : 'DSH Local Build')
     }
+  })
+  it('keeps the shell.console seat mounted while main panels change', () => {
+    const { instance, frame, getByTestId } = mountFrame()
+    expect(frame.querySelector('[data-shell-console]')).not.toBeNull()
+    const host = getByTestId('shell.console-content')
+    act(() => { instance.actions.selectPanel('plugins' as MainPanelId) })
+    expect(getByTestId('shell.console-content')).toBe(host)
+    act(() => { instance.actions.selectPanel(null) })
+    expect(getByTestId('shell.console-content')).toBe(host)
   })
 })
 

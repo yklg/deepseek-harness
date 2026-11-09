@@ -70,6 +70,7 @@ export class AutomationBrokerError extends Error {
 interface GuestLease {
   readonly owner: WebContents
   readonly partition: string
+  readonly backgroundThrottling: boolean
   attached: boolean
   ended: boolean
   guest?: WebContents
@@ -99,6 +100,15 @@ function assertWorkspaceKey(workspace: unknown): string {
     throw new Error('desktop browser: a workspace storage identity is required')
   }
   return workspace
+}
+
+function assertGuestOptions(options: unknown): boolean {
+  if (options === undefined) return true
+  if (typeof options !== 'object' || options === null) throw new Error('desktop browser: invalid guest options')
+  const value = (options as { backgroundThrottling?: unknown }).backgroundThrottling
+  if (value === undefined) return true
+  if (typeof value !== 'boolean') throw new Error('desktop browser: backgroundThrottling must be boolean')
+  return value
 }
 
 function assertTargetId(value: unknown): DesktopBrowserLeaseId {
@@ -159,17 +169,19 @@ export class DesktopBrowserGuests {
    * Reserve one guest in a workspace's persistent per-workspace partition.
    * @param owner - authenticated primary application WebContents.
    * @param workspace - workspace identity received over IPC.
+   * @param options - optional guest throttle policy received over IPC.
    * @returns opaque lease and the persistent partition approved for it.
    */
-  acquire(owner: WebContents, workspace: unknown): DesktopBrowserReservation {
+  acquire(owner: WebContents, workspace: unknown, options: unknown = undefined): DesktopBrowserReservation {
     const key = assertWorkspaceKey(workspace)
+    const backgroundThrottling = assertGuestOptions(options)
     const partition = this.partitionFor(key)
     if (!this.configuredPartitions.has(partition)) {
       this.configureSession(session.fromPartition(partition))
       this.configuredPartitions.add(partition)
     }
     const lease = randomUUID() as DesktopBrowserLeaseId
-    this.leases.set(lease, { owner, partition, attached: false, ended: false })
+    this.leases.set(lease, { owner, partition, backgroundThrottling, attached: false, ended: false })
     return { lease, partition }
   }
 
@@ -228,6 +240,7 @@ export class DesktopBrowserGuests {
       }
       Object.assign(preferences, {
         partition: lease.partition,
+        backgroundThrottling: lease.backgroundThrottling,
         nodeIntegration: false, nodeIntegrationInWorker: false, nodeIntegrationInSubFrames: false,
         contextIsolation: true, sandbox: true, webSecurity: true, allowRunningInsecureContent: false,
         webviewTag: false, plugins: false, navigateOnDragDrop: false, disableDialogs: true,

@@ -10,6 +10,7 @@ import { BrowserBody, type BrowserBodyProps } from './view/BrowserBody.tsx'
 import { BrowserTitle } from './view/BrowserTitle.tsx'
 import { createBrowserControllers } from './browser/BrowserController.ts'
 import type { BrowserInjected } from './browser/BrowserController.ts'
+import { createDesktopBrowserSurface, unavailableBrowserSurface, type BrowserSurfaceService } from './surface/BrowserSurface.ts'
 import { createIframePage } from './pages.ts'
 import { createElectronPage } from './electron/pages.ts'
 import type { DesktopBrowserBridge } from '../types.ts'
@@ -23,6 +24,7 @@ export type { BrowserBodyProps } from './view/BrowserBody.tsx'
 export type { BrowserControllerState, BrowserInjected, BrowserMountRequest } from './browser/BrowserController.ts'
 export type { BrowserFrame, BrowserFrameState, BrowserLoadError, BrowserSandboxControl } from './browser/BrowserFrame.ts'
 export type { BrowserPage, BrowserPageFactory, BrowserPageOptions } from './browser/BrowserPage.ts'
+export type { BrowserSurface, BrowserSurfaceOptions, BrowserSurfaceService } from './surface/BrowserSurface.ts'
 export type { BrowserPresentation } from './view/BrowserPresentation.ts'
 export type { BrowserFailure, BrowserHistoryEntry, BrowserNavigationStatus, BrowserTabState } from './browser/BrowserPersistence.ts'
 export type { SidebarBrowserKey } from './locales.ts'
@@ -33,6 +35,13 @@ declare module '@deepseek-ai/dsh-client-ui-sidebar-right/client' {
   interface SidebarRightTabParamsMap {
     /** Optional initial Browser URL. */
     browser: { readonly url?: string }
+  }
+}
+
+declare module '@deepseek-ai/cordis' {
+  interface Context {
+    /** Persistent main-area browser surface provided by this plugin. */
+    browserSurface: BrowserSurfaceService
   }
 }
 
@@ -50,6 +59,8 @@ export function apply(ctx: Context): void {
     dshDesktop?: { readonly protocolVersion: number; readonly browser?: DesktopBrowserBridge }
   }).dshDesktop
   const desktop = carrier?.protocolVersion === 1 ? carrier.browser : undefined
+  const surface = desktop === undefined ? unavailableBrowserSurface : createDesktopBrowserSurface(desktop)
+  ctx.effect(() => ctx.reflect.provide('browserSurface', surface), 'ui-sidebar-browser: browser surface')
   const zoomTarget = (element: Element | null): { controller: BrowserInjected; tabId: Parameters<BrowserInjected['zoomIn']>[0] } | undefined => {
     const target = ctx.sidebarRight.commandTarget(element)
     if (target?.tabId === undefined) return undefined

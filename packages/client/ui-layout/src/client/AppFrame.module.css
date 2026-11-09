@@ -393,3 +393,17 @@
 .overlayLayer > * {
   pointer-events: auto;
 }
+
+/* A full-area workspace can keep a webview mounted here while another main
+   panel is selected. The seat is click-through; the occupant decides its own
+   rectangle and hides with visibility, never by unmounting the subtree. */
+.consoleSeat {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.consoleSeat > * {
+  pointer-events: auto;
+}

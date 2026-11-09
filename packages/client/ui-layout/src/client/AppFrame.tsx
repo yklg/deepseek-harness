@@ -15,7 +15,7 @@
  * shares — zero cordis or framework imports, zero self-made hooks.
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type {
   HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
 } from '@deepseek-ai/dsh-client-ui-slots'
@@ -32,7 +32,7 @@ export interface AppFrameInjected {
 /** Full composed props: runtime, child slots, store, locale, and injected posture. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.bottom' | 'shell.overlay' | 'shell.leading'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.bottom' | 'shell.console' | 'shell.overlay' | 'shell.leading'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & PropsLocale<'common'>
   & InjectFace<AppFrameInjected>
@@ -283,22 +283,27 @@ export function AppFrame({
     <MainPanel usePanelInfo={usePanelInfo} renderSlot={renderSlot} />
   ), [usePanelInfo, renderSlot])
   const overlays = useMemo(() => renderSlot('shell.overlay', {}), [renderSlot])
+  const consoleSeat = useMemo(() => renderSlot('shell.console', {}), [renderSlot])
   // The leading seat serves drawers and fully hidden macOS sidebars.
   // Windows native captions keep their controls in the caption row instead.
   // AppFrame.module.css reserves clearance for the seat's rendered controls.
   const leading = useMemo(() => renderSlot('shell.leading', {}), [renderSlot])
   const leadingMounted = drawer || darwin && sidebarCollapsed
+  // Effective left track width; a full-area seat (the ecommerce console) keeps
+  // this rectangular contract while the column collapses or drags.
+  const frameStyle: CSSProperties & Record<'--dsh-frame-sidebar-width', string> = {
+    ...(windowsTitlebar
+      ? { '--dsh-windows-sidebar-width': `${cols.sidebar}px` } : {}),
+    '--dsh-frame-sidebar-width': `${cols.sidebar}px`,
+    gridTemplateColumns:
+      `${cols.sidebar}px minmax(0px, ${rightbarMax}px) minmax(${cols.rightbar === 0 ? 0 : CENTER_MIN}px, 1fr)`,
+  }
 
   return (
     <div
       ref={frameRef}
       className={css.frame}
-      style={{
-        ...(windowsTitlebar
-          ? { '--dsh-windows-sidebar-width': `${cols.sidebar}px` } : {}),
-        gridTemplateColumns:
-          `${cols.sidebar}px minmax(0px, ${rightbarMax}px) minmax(${cols.rightbar === 0 ? 0 : CENTER_MIN}px, 1fr)`,
-      }}
+      style={frameStyle}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-sidebar-drawer={drawer || undefined}
       data-sidebar-instant={drawer && sidebarCollapsed && sidebarTransition.instant || undefined}
@@ -329,6 +334,9 @@ export function AppFrame({
       </>
       <div className={css.bottomRow} data-shell-bottom {...{ inert: drawerOpen ? '' : undefined }}>
         {renderSlot('shell.bottom', {})}
+      </div>
+      <div className={css.consoleSeat} data-shell-console>
+        {consoleSeat}
       </div>
       <div className={css.overlayLayer} data-shell-overlay>
         {overlays}

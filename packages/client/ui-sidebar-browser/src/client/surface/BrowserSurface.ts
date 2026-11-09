@@ -17,6 +17,8 @@ export interface BrowserSurfaceOptions {
   readonly backgroundThrottling?: boolean
   /** Application origin used by the shared address parser. */
   readonly applicationOrigin: string
+  /** Receives page-initiated new-window requests (target=_blank/window.open). */
+  readonly openRequested?: (url: string) => void
 }
 
 /** A mounted webview surface with carrier-neutral navigation state. */
@@ -130,10 +132,10 @@ export function createDesktopBrowserSurface(bridge: DesktopBrowserBridge): Brows
       const pageOptions: BrowserPageOptions = {
         initial: undefined,
         persist: () => {},
-        openRequested: () => {},
+        openRequested: (url) => { options.openRequested?.(url) },
         ...options.backgroundThrottling === undefined ? {} : { backgroundThrottling: options.backgroundThrottling },
       }
-      const page = createElectronPage(pageOptions, bridge, async () => options.storageKey)
+      const page = createElectronPage(pageOptions, bridge, () => Promise.resolve(options.storageKey))
       return createBrowserSurface(page, options, bridge)
     },
   }

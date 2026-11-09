@@ -237,7 +237,7 @@ describe('ConsoleController', () => {
       })
     }))
     await controller.open('douyin-shop')
-    surfaces[0]?.emit(page('https://fxg.jinritemai.com/login'))
+    surfaces[0]?.emit(page('https://fxg.jinritemai.com/ffa/content-tool/live/control'))
     await vi.advanceTimersByTimeAsync(0)
     expect(snapshotOf(controller).checking).toBe(true)
     const first = controller.dispose()
@@ -411,5 +411,46 @@ describe('ConsoleController', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(surfaces[1]?.['loadUrl']).toHaveBeenCalledExactlyOnceWith(buyin.consoleEntry.urls[0])
     await controller.dispose()
+  })
+})
+
+describe('ConsoleController page classification', () => {
+  it('opens the canonical Buyin sign-in entry and treats a portal page as an outside-platform issue', async () => {
+    const probe = vi.fn(async () => buyinInProbe)
+    const { controller, surfaces } = controllerFor(probe)
+    await controller.open('buyin')
+    expect(surfaces[0]?.options.initialUrl).toBe(buyin.loginUrl)
+    surfaces[0]?.emit(page('https://www.douyinec.com/'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller)).toMatchObject({
+      phase: 'ready', pageIssue: 'left-platform', loginState: 'out', probeError: undefined,
+    })
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(probe).not.toHaveBeenCalled()
+  })
+
+  it('returns an outside-platform guest to the login entry', async () => {
+    const { controller, surfaces } = controllerFor(async () => buyinInProbe)
+    await controller.open('buyin')
+    surfaces[0]?.emit(page('https://www.douyinec.com/'))
+    await vi.advanceTimersByTimeAsync(0)
+    controller.navigateToLogin()
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.loadUrl).toHaveBeenCalledWith(buyin.loginUrl)
+    expect(snapshotOf(controller).pageIssue).toBeUndefined()
+  })
+
+  it('follows platform links in the guest and blocks external new-window requests', async () => {
+    const { controller, surfaces } = controllerFor(async () => buyinInProbe)
+    await controller.open('buyin')
+    surfaces[0]?.emit(page('https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(controller.followLink('https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24')).toBe(true)
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.loadUrl).toHaveBeenCalledTimes(1)
+    expect(controller.followLink('https://www.douyinec.com/')).toBe(false)
+    // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
+    expect(surfaces[0]?.loadUrl).toHaveBeenCalledTimes(1)
+    expect(snapshotOf(controller).blockedLink).toBe(true)
   })
 })

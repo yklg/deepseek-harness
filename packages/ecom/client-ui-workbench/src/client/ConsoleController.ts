@@ -34,6 +34,10 @@ export interface ConsoleSnapshot {
   readonly error?: string | undefined
   /** Failure of the latest login probe; the next probe retries automatically. */
   readonly probeError?: string | undefined
+  /** Set while the guest shows a page outside the selected platform. */
+  readonly pageIssue?: 'left-platform' | undefined
+  /** Set after a blocked external new-window request; cleared on navigation. */
+  readonly blockedLink?: boolean | undefined
 }
 
 /**
@@ -58,6 +62,8 @@ export interface ConsoleControllerOptions {
   readonly probeRetryMs?: number
   /** Reserved account dimension; v1 keeps one account per platform. */
   readonly account?: string
+  /** Receives page-initiated new-window requests from the platform guest. */
+  readonly openRequested?: (url: string) => void
 }
 
 /** Probe cadence kept inside the product's one-to-two-minute detection window. */
@@ -144,7 +150,7 @@ export class ConsoleController {
     const generation = ++this.generation
     this.stopProbe()
     this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', checking: false,
-      url: undefined, error: undefined, probeError: undefined })
+      url: undefined, error: undefined, probeError: undefined, pageIssue: undefined, blockedLink: undefined })
     await this.releaseSurface()
     if (this.isStale(generation)) return
     let surface: BrowserSurface
@@ -200,7 +206,47 @@ export class ConsoleController {
   /** Re-read the login state when the console becomes visible or the window regains focus. */
   refreshLogin(): void {
     if (this.surface === undefined || this.snapshot.platformId === null || this.snapshot.phase === 'starting') return
+    const platform = platformById(this.snapshot.platformId)
+    const url = this.snapshot.url
+    if (platform === undefined || url === undefined) return
+    const kind = platform.classifyUrl(url)
+    if (kind === 'login' || kind === 'external') return
     this.scheduleProbe(0)
+  }
+
+  /** Navigate the guest to the platform sign-in entry, clearing a left-platform issue. */
+  navigateToLogin(): void {
+    if (this.disposed) return
+    const platform = this.snapshot.platformId === null ? undefined : platformById(this.snapshot.platformId)
+    if (platform === undefined || this.surface === undefined) return
+    this.stopProbe()
+    this.publish({ pageIssue: undefined, blockedLink: undefined, probeError: undefined, loginState: 'out', checking: false })
+    this.surface.loadUrl(platform.loginUrl)
+  }
+
+  /**
+   * Follow a page-initiated new-window request with the v1 policy: platform, console,
+   * and login URLs navigate the current guest; everything else is blocked visibly.
+   * @param url - address requested by the guest page.
+   * @returns whether the link was followed.
+   */
+  followLink(url: string): boolean {
+    if (this.disposed) return false
+    const platform = this.snapshot.platformId === null ? undefined : platformById(this.snapshot.platformId)
+    if (platform === undefined || this.surface === undefined) return false
+    const kind = platform.classifyUrl(url)
+    if (kind === 'external') {
+      this.publish({ blockedLink: true })
+      return false
+    }
+    this.publish({ blockedLink: undefined, pageIssue: undefined })
+    this.surface.loadUrl(url)
+    return true
+  }
+
+  /** Clear the blocked-link notice without navigating. */
+  dismissBlockedLink(): void {
+    if (this.snapshot.blockedLink === true) this.publish({ blockedLink: undefined })
   }
 
   /** Retry the failed surface and read the login state again. */
@@ -253,7 +299,7 @@ export class ConsoleController {
     const frame = surface.state.getSnapshot()
     const url = frame.target?.url
     if (url !== this.snapshot.url) {
-      this.publish({ url })
+      this.publish({ url, blockedLink: undefined })
       // A clean navigation clears a failure that the previous page reported.
       if (frame.error === undefined && this.snapshot.phase === 'failed') this.publish({ phase: 'ready', error: undefined })
     }
@@ -261,7 +307,19 @@ export class ConsoleController {
       this.publish({ phase: 'failed', error: frame.error.description ?? 'navigation failed' })
       return
     }
-    if (url === undefined || frame.loading || frame.targetId === undefined) return
+    if (url === undefined || frame.loading) return
+    const platform = this.snapshot.platformId === null ? undefined : platformById(this.snapshot.platformId)
+    if (platform !== undefined) {
+      const kind = platform.classifyUrl(url)
+      if (kind === 'login' || kind === 'external') {
+        this.stopProbe()
+        this.publish({ phase: 'ready', loginState: 'out', checking: false, probeError: undefined,
+          pageIssue: kind === 'external' ? 'left-platform' : undefined })
+        return
+      }
+      this.publish({ pageIssue: undefined })
+    }
+    if (frame.targetId === undefined) return
     if (this.snapshot.phase === 'starting') this.publish({ phase: 'ready' })
     this.scheduleProbe(0)
   }

@@ -39,6 +39,8 @@ export interface ConsoleHostInjected {
   readonly toggleSidebar: () => void
   /** Re-read the active platform's login state after the window regains focus. */
   readonly refreshLogin: () => void
+  /** Return an out-of-platform guest to the canonical sign-in entry. */
+  readonly navigateToLogin: () => void
   /** Switch the main column to the AI assistant conversation. */
   readonly toggleAssistant: () => void
 }
@@ -79,6 +81,8 @@ function hintOf(snapshot: ConsoleSnapshot, available: boolean, t: ConsoleHostPro
   if (snapshot.phase === 'failed' && snapshot.error !== undefined) {
     return { tone: 'error', text: t('platform.console.failed', { message: snapshot.error }) }
   }
+  if (snapshot.blockedLink === true) return { tone: 'info', text: t('platform.link.blocked') }
+  if (snapshot.pageIssue === 'left-platform') return { tone: 'error', text: t('platform.page.outside') }
   if (snapshot.probeError !== undefined) {
     return { tone: 'error', text: t('platform.probe.failed', { message: snapshot.probeError }) }
   }
@@ -94,7 +98,7 @@ function hintOf(snapshot: ConsoleSnapshot, available: boolean, t: ConsoleHostPro
 export function ConsoleHost(props: ConsoleHostProps): ReactNode {
   const {
     useConsole, usePanelInfo, useSidebar, attach, panelId, available, showSelection, retry, toggleSidebar,
-    refreshLogin, toggleAssistant, t,
+    refreshLogin, navigateToLogin, toggleAssistant, t,
   } = props
   const snapshot = useConsole(state => state)
   const collapsed = useSidebar(info => info.collapsed)
@@ -127,7 +131,10 @@ export function ConsoleHost(props: ConsoleHostProps): ReactNode {
             {loginStateText(snapshot, t)}
           </span>
           <div className={css.actions}>
-            {snapshot.loginState === 'in' ? null : (
+            {snapshot.pageIssue === 'left-platform' ? (
+              <Button size="sm" variant="outline" onClick={navigateToLogin}>{t('platform.login.open')}</Button>
+            ) : null}
+            {snapshot.loginState === 'in' || snapshot.pageIssue === 'left-platform' ? null : (
               <Button size="sm" variant="ghost" onClick={refreshLogin}>{t('platform.login.refresh')}</Button>
             )}
             <Button size="sm" variant="ghost" onClick={toggleAssistant}>{t('platform.aiAssistant')}</Button>

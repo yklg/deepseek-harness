@@ -198,3 +198,24 @@ describe('login probe', () => {
     expect(buyin.loginState(probe(buyin.loginUrl, '直播中控 数据中心'))).toBe('out')
   })
 })
+
+describe('platform URL taxonomy', () => {
+  it('classifies Buyin console, login, platform, and portal addresses', () => {
+    expect(buyin.classifyUrl('https://buyin.jinritemai.com/dashboard/live/control')).toBe('console')
+    expect(buyin.classifyUrl('https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24')).toBe('login')
+    expect(buyin.classifyUrl('https://buyin.jinritemai.com/dashboard')).toBe('platform')
+    expect(buyin.classifyUrl('https://www.douyinec.com/')).toBe('external')
+  })
+
+  it('classifies Douyin console and login addresses', () => {
+    expect(douyinShop.classifyUrl('https://fxg.jinritemai.com/ffa/content-tool/live/control')).toBe('console')
+    expect(douyinShop.classifyUrl('https://fxg.jinritemai.com/login/common')).toBe('login')
+    expect(douyinShop.classifyUrl('https://buyin.jinritemai.com/dashboard/live/control')).toBe('external')
+  })
+
+  it('rejects unsafe schemes and userinfo as external', () => {
+    expect(buyin.classifyUrl('javascript:alert(1)')).toBe('external')
+    expect(buyin.classifyUrl('https://user:pass@buyin.jinritemai.com/dashboard')).toBe('external')
+    expect(buyin.classifyUrl('not a url')).toBe('external')
+  })
+})

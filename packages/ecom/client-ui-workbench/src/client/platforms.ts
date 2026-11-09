@@ -22,6 +22,9 @@ export interface PlatformConsoleEntry {
   readonly pathPrefixes: readonly string[]
 }
 
+/** Kind of page a platform guest currently shows. */
+export type PlatformUrlKind = 'console' | 'login' | 'platform' | 'external'
+
 /** One platform's URLs, storage identity and login detector. */
 export interface PlatformAdapter {
   readonly id: PlatformId
@@ -29,9 +32,13 @@ export interface PlatformAdapter {
   readonly titleKey: PlatformLocaleKey
   /** Locale key for the card description. */
   readonly descriptionKey: PlatformLocaleKey
+  /** Canonical sign-in entry; `open()` starts here unless a console URL is restored. */
   readonly loginUrl: string
   readonly homeUrl: string
+  /** Application origins that may be probed through the automation broker. */
   readonly origins: readonly string[]
+  /** Sign-in origins; navigation here is a login-flow page rather than a probe target. */
+  readonly loginOrigins: readonly string[]
   /** Console destination and the paths that already show it. */
   readonly consoleEntry: PlatformConsoleEntry
   /**
@@ -41,6 +48,12 @@ export interface PlatformAdapter {
    * @returns an absolute https login URL on a registered origin.
    */
   readonly loginUrlWithConsole?: (consoleUrl: string) => string
+  /**
+   * Classify one guest address without touching the page.
+   * @param value - address reported by the surface.
+   * @returns console, login, platform, or external.
+   */
+  classifyUrl(value: string): PlatformUrlKind
   /** Read-only script evaluated in the guest to collect a probe. */
   readonly probeScript: string
   /** @param probe - snapshot from the guest, or undefined before one exists. */
@@ -124,6 +137,25 @@ function probeState(origins: readonly string[], probe: PlatformProbe | undefined
   return 'unknown'
 }
 
+/**
+ * Classify a guest address against one platform's URL taxonomy.
+ * @param origins - application origins eligible for probing.
+ * @param loginOrigins - sign-in origins.
+ * @param consoleEntry - console destinations.
+ * @param value - candidate address.
+ * @returns the page kind; malformed or unsafe addresses are external.
+ */
+function classifyPlatformUrl(origins: readonly string[], loginOrigins: readonly string[],
+  consoleEntry: PlatformConsoleEntry, value: string): PlatformUrlKind {
+  let url: URL
+  try { url = new URL(value) } catch { return 'external' }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return 'external'
+  const path = url.pathname.replace(/\/+$/, '') || '/'
+  if (consoleEntry.pathPrefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) return 'console'
+  if (origins.includes(url.origin)) return LOGIN_PATH.test(url.pathname) ? 'login' : 'platform'
+  return loginOrigins.includes(url.origin) ? 'login' : 'external'
+}
+
 /** Douyin Shop merchant backend. */
 export const douyinShop: PlatformAdapter = {
   id: 'douyin-shop',
@@ -132,6 +164,8 @@ export const douyinShop: PlatformAdapter = {
   loginUrl: DOUYIN_LOGIN_URL,
   homeUrl: 'https://fxg.jinritemai.com/',
   origins: DOUYIN_ORIGINS,
+  loginOrigins: DOUYIN_ORIGINS,
+  classifyUrl: value => classifyPlatformUrl(DOUYIN_ORIGINS, DOUYIN_ORIGINS, douyinShop.consoleEntry, value),
   consoleEntry: {
     urls: [DOUYIN_CONSOLE_PRIMARY, DOUYIN_CONSOLE_FALLBACK],
     pathPrefixes: ['/ffa/content-tool/live', '/ffa/buyin/dashboard/live'],
@@ -147,9 +181,11 @@ export const buyin: PlatformAdapter = {
   id: 'buyin',
   titleKey: 'platform.buyin.title',
   descriptionKey: 'platform.buyin.description',
-  loginUrl: 'https://buyin.jinritemai.com/mpa/account/roles-select',
+  loginUrl: 'https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24',
   homeUrl: 'https://buyin.jinritemai.com/',
   origins: BUYIN_ORIGINS,
+  loginOrigins: BUYIN_ORIGINS,
+  classifyUrl: value => classifyPlatformUrl(BUYIN_ORIGINS, BUYIN_ORIGINS, buyin.consoleEntry, value),
   consoleEntry: {
     urls: [BUYIN_CONSOLE_URL],
     pathPrefixes: ['/dashboard/live/control'],

@@ -144,10 +144,16 @@ function registerUi(ctx: ClientContext): void {
     storage: defaultPreferencesStorage(),
     viewport: () => ({ width: window.innerWidth, height: window.innerHeight }),
   })
+  function followRequestedUrl(url: string): void {
+    const platformId = controller.state.getSnapshot().platformId
+    if (platformId === null) return
+    controller.followLink(url)
+  }
   const controller = new ConsoleController({
     surface: surfaceAccessor(ctx),
     applicationOrigin: globalThis.location.origin,
     probe: createWorkbenchProbe(ctx.remote.workbench),
+    openRequested: followRequestedUrl,
   })
   // Registered first so the UI registrations below dispose before the guest does.
   ctx.effect(() => () => controller.dispose(), 'client-ui-workbench: console controller')
@@ -185,6 +191,9 @@ function registerUi(ctx: ClientContext): void {
   ctx.effect(() => controller.state.subscribe(() => {
     const snapshot = controller.state.getSnapshot()
     if (snapshot.platformId === null || snapshot.loginState !== 'in' || snapshot.url === undefined) return
+    // Only a console address is a useful deep link; a login/portal page must not
+    // become the restored entry point on the next launch.
+    if (platformById(snapshot.platformId)?.classifyUrl(snapshot.url) !== 'console') return
     rememberPlatform(snapshot.platformId, snapshot.url)
   }), 'client-ui-workbench: remember console address')
   const source = createWorkbenchSource({
@@ -301,6 +310,7 @@ function registerUi(ctx: ClientContext): void {
       retry: () => { controller.retry() },
       toggleSidebar: toggleNavigation,
       refreshLogin: () => { controller.refreshLogin() },
+      navigateToLogin: () => { controller.navigateToLogin() },
       toggleAssistant,
     }),
   }, ConsoleHost)), 'client-ui-workbench: console host')

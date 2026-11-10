@@ -58,10 +58,10 @@
   flex-direction: column;
   /* figma Input 75:8208: 12px between the text area and the button row; the
      card's top pad before .InputText tightened from the drawn 10 to 8. */
-  gap: 12px;
+  gap: var(--dsh-composer-card-gap, 12px);
   width: 100%;
   max-width: var(--dsh-composer-card-max-width);
-  padding-top: 8px;
+  padding-top: var(--dsh-composer-card-padding-top, 8px);
   /* Input stroke: the light neutral (l2, one step above the menus' l1),
      drawn as the elevation hairline so it costs no layout; the shadow is the
      soft elevation tier. Fill: the input surface token (elevated in dark). */
@@ -255,7 +255,7 @@
 /* Hero (centered empty-state) keeps the 2-line floor (figma min-h 52 = ~2 × 24
    line + 4pt); the docked composer collapses to the content height. */
 .hero .input {
-  min-height: 52px;
+  min-height: var(--dsh-composer-hero-input-min-height, 52px);
 }
 
 /* The hero's 52px floor fits two lines, so its placeholder clamps at two

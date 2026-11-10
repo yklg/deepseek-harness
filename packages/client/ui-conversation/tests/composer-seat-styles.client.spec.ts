@@ -56,3 +56,40 @@ describe('composer statistics row styles', () => {
     expect(trigger).toMatch(/padding:\s*1px 8px;/)
   })
 })
+
+describe('embedded composer layout', () => {
+  it('shares the single composer seat rule with the embedded hero', () => {
+    expect(conversationCss).toMatch(/\.embeddedBody\[data-content-phase='hero'\] \.composerSeat/)
+    // The embedded hero must not introduce a second ranked seat rule.
+    const ranked = [...conversationCss.matchAll(/([^{}]*\.composerSeat[^{}]*)\{([^}]*)\}/g)]
+      .filter(([, , body]) => body !== undefined && /z-index/.test(body))
+    expect(ranked).toHaveLength(1)
+  })
+
+  it('scrolls the embedded hero instead of centering it', () => {
+    expect(rule(conversationCss, ".embeddedBody[data-content-phase='hero'] .scrollBody"))
+      .toMatch(/justify-content:\s*flex-start;[\s\S]*overflow-y:\s*auto;/)
+  })
+
+  it('tightens the embedded hero stack above the compact card', () => {
+    expect(rule(conversationCss, '.embeddedBody .composerHero'))
+      .toMatch(/padding-bottom:\s*8px;[\s\S]*gap:\s*4px;/)
+  })
+})
+
+describe('composer density variables', () => {
+  it('keeps main-composer defaults on the InputBar card', () => {
+    const card = rule(inputBarCss, '.card')
+    expect(card).toContain('gap: var(--dsh-composer-card-gap, 12px)')
+    expect(card).toContain('padding-top: var(--dsh-composer-card-padding-top, 8px)')
+    const heroInput = rule(inputBarCss, '.hero .input')
+    expect(heroInput).toContain('min-height: var(--dsh-composer-hero-input-min-height, 52px)')
+  })
+
+  it('supplies compact embedded values without touching main', () => {
+    const embedded = rule(conversationCss, '.embeddedBody')
+    expect(embedded).toContain('--dsh-composer-card-gap: 8px')
+    expect(embedded).toContain('--dsh-composer-card-padding-top: 6px')
+    expect(embedded).toContain('--dsh-composer-hero-input-min-height: 40px')
+  })
+})

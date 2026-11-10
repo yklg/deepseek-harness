@@ -27,6 +27,7 @@ kind: "package-reference"
 在 profile bundle 中把本行挂在 Host 行旁；`dsh-bundle-ecom-workbench` 会插入两行。本包依赖 Remote 传输、文案、插槽与布局注册表、右侧栏标签注册表、侧栏导航服务，以及 `ctx.browserSurface` 提供者，Web 与桌面 profile 均会提供。
 
 - **工作台优先**：启动时主面板就是电商工作台，harness 侧栏默认收起。本包提供可选服务 `ctx.productNavigation = { compact: true }`，因此展开侧栏时隐藏 harness 品牌块与「新会话」按钮，但保留面板行、工作区/会话列表与设置。
+- AI 浮窗用 flex 填满的 body 承载嵌入会话，composer 栈始终贴在浮窗底部；嵌入输入卡使用共享的紧凑密度，空白 Hero 在上方留出空间而不是把输入框居中。
 - 产品顶栏包含工作台品牌、切到会话主面板的 **AI 助手** 动作，以及 harness 侧栏的 **导航** 开关。选择任意主面板后侧栏会再次收起。
 - 页面为每个已上线平台显示一张 Hero 卡、一个禁用的抖音团购占位，以及 **启动时自动进入** 开关。选择结果与开关保存在本机 localStorage；开启自动进入时，启动会直接打开上次使用的平台。
 - 进入平台时，在该平台的持久分区上打开登录页，或恢复上次登录态中记住的中控地址。分区键为 `platform:<platformId>:<accountId>`，因此两个平台各自保留登录态，重启后仍然有效。

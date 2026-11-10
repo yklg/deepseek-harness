@@ -476,6 +476,11 @@
 
 .embeddedBody {
   overflow: hidden;
+  /* Embedded density seam: InputBar declares these defaults and this occurrence
+     supplies the compact values used by the floating assistant and sidebar chat. */
+  --dsh-composer-card-gap: 8px;
+  --dsh-composer-card-padding-top: 6px;
+  --dsh-composer-hero-input-min-height: 40px;
   --dsh-chat-content-width: min(calc(100% - 32px), 920px);
   --dsh-composer-card-max-width: min(calc(100% - 16px), 952px);
   --dsh-composer-side-clearance: 8px;
@@ -512,7 +517,8 @@
 }
 
 .root[data-phase='active'] .composerSeat,
-.embeddedBody[data-content-phase='active'] .composerSeat {
+.embeddedBody[data-content-phase='active'] .composerSeat,
+.embeddedBody[data-content-phase='hero'] .composerSeat {
   position: sticky;
   bottom: 0;
   /* Takes the scroll body's free space whenever the transcript is shorter than
@@ -592,6 +598,11 @@
    flex-centered in the column; composer phase docks it at the bottom. Flex,
    NOT absolute+transform: a transform would make this box the containing
    block for position:fixed descendants (pickers/modals), shrinking them. */
+.embeddedBody .composerHero {
+  padding-bottom: 8px;
+  gap: 4px;
+}
+
 .composerHero {
   align-self: center;
   /* figma 75:8208 drew 12 between all three rows; the workspace row now sits
@@ -633,9 +644,15 @@
 
 /* Hero: the composer sits inside the session scroll body; center there so
    the tree seat matches active (sticky footer) without a Root remount. */
-.root[data-phase='hero'] .scrollBody,
-.embeddedBody[data-content-phase='hero'] .scrollBody {
+.root[data-phase='hero'] .scrollBody {
   justify-content: center;
+  overflow-y: auto;
+}
+
+/* Embedded hero keeps the composer stack at the floor: free space stays above
+   the Hero instead of centering the input in the middle of a small window. */
+.embeddedBody[data-content-phase='hero'] .scrollBody {
+  justify-content: flex-start;
   overflow-y: auto;
 }
 

@@ -126,3 +126,14 @@ describe('AssistantHeaderActions', () => {
     expect(jumpConsole).toHaveBeenCalledOnce()
   })
 })
+
+describe('assistant embedded layout contract', () => {
+  it('stretches the conversation body with a flex column', async () => {
+    const { readFile } = await import('node:fs/promises')
+    const css = await readFile('packages/ecom/client-ui-workbench/src/client/AssistantWindow.module.css', 'utf8')
+    const body = /\.body\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    expect(body).toContain('display: flex')
+    expect(body).toContain('flex-direction: column')
+    expect(body).toContain('min-height: 0')
+  })
+})

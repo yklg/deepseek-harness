@@ -42,6 +42,7 @@
     "apps/web/tests/cot-translation-paid.e2e.ts",
     "apps/web/tests/forge-panel.e2e.ts",
     "apps/web/tests/ecom-workbench.e2e.ts",
+    "apps/web/tests/assistant-window-layout.e2e.ts",
     "apps/web/tests/voice-setup.e2e.ts",
     "apps/web/tests/voice-download.e2e.ts",
     "apps/web/tests/prefix-proxy.ts",

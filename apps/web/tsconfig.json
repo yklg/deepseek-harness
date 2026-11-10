@@ -60,6 +60,7 @@
     "tests/cot-translation-paid.e2e.ts",
     "tests/forge-panel.e2e.ts",
     "tests/ecom-workbench.e2e.ts",
+    "tests/assistant-window-layout.e2e.ts",
     "tests/voice-setup.e2e.ts",
     "tests/voice-download.e2e.ts",
     "tests/prefix-proxy.ts",

@@ -139,7 +139,8 @@
 - 行为：`ConsoleSnapshot` 新增 `loginExpired`/`logoutError`；本平台本轮探针先 `in` 后 `out`，或已登录访客被平台重定向回登录页时判定失效；`relogin()` 回标准登录入口并恢复常规「探针 → 中控」转场；`logout()` 先 `surface.clearStorage()` 清平台持久分区再回登录页，失败经 `logoutError` 呈现且可重试，并发调用只执行一次；`open()` 新平台、`logout()`/`relogin()` 成功、探针重新 `in` 均清除失效态。
 - UI：中控顶栏与状态行之间显示失效横幅（`platform.login.expired` + 「重新登录」「退出登录」），`logoutError` 独立 `role=alert` 行；8 语言文案键集一致；横幅独立于既有探针重试提示。
 - 验证：`pnpm exec vitest run packages/ecom/client-ui-workbench/tests` → 13 files / 201 tests PASS（新增控制器 10+1、宿主 6、文案 parity 1）；`tsc -b` 包级、`verify-client-ui-i18n`（1296 files）、`build:artifacts`（8/8）、`build:check`（2/2）、`verify-translation-pairing`（1214 pairs）、oxlint 0。
-- 未验证：真实 Electron 下的横幅渲染（明暗主题/窄宽换行）与真实 `clearStorage` 登出流，需桌面实例 + 官方扫码；`build:check` 曾因测试中 `consoleEntry.urls[0]` 的可空类型失败，已修。
+- 真机已验（2026-11-21，隔离 dev 实例 + CDP）：清 guest cookie 并跳转百应登录页模拟会话过期 → 中控顶栏登录态变「未登录」、失效横幅出现（「登录已失效，请重新登录 / 重新登录 / 退出登录」）；点「重新登录」→ 横幅消失、回到百应官方扫码登录页。
+- 未完成（dev 实例已留在百应扫码页）：扫码后登录刷新与自动进中控、失效后「退出登录」清分区、`autoEnter` 冷启动、横幅明暗主题/窄宽换行；`build:check` 曾因测试中 `consoleEntry.urls[0]` 的可空类型失败，已修。
 
 ## 当前状态与下一步（2026-11-21）
 

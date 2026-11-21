@@ -54,3 +54,7 @@ native/system/test/bin/
 
 # Electron binary cache kept inside the workspace (sandboxed home is read-only)
 .electron-cache/
+
+# Local product planning archive and agent tooling state (not part of the branch)
+.product-archive/
+.commandcode/

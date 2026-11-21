@@ -115,3 +115,31 @@
 1. **高风险写执行器**：发送、改价、上下架、库存需要云营写 API；审批策略已接入，执行器落地时复用 `ecom_*` 工具名。
 2. **其余 web 快照/全量 GUI**：`test:web` 全量与 `test:gui` 交给 CI；本机已跑受影响的 e2e 与 ecom 定向单测。
 3. **产品打包/品牌**：按「补丁面」表继续维护桌面打包、图标与 Windows 未签名包。
+
+## 产品体验轮记录（2026-11-09 / 11-10）
+
+本轮计划、评审与测试覆盖原文（`PLAN-UI-REFINE`、`PLAN-BUYIN-FIX`、`PLAN-SIDEBAR-MOTION` 及对应 REVIEW/TEST 文档）已归档到工作区外 `.product-archive/2026-11-experience-round/`（gitignore），要点合并如下。所有条目已提交，无未提交代码。
+
+| 主题 | 提交 | 要点 |
+|---|---|---|
+| 工作台优先外壳 + 悬浮 AI 助手 | `b36acd05` | 默认主面板=工作台、侧栏默认收起/紧凑；抽出 `EmbeddedConversation` 供浮窗复用；`AssistantWindow` 支持拖拽/8 向缩放/边缘吸附/位置持久化、任意页面呼出；产品顶栏避让 `shell.leading`；平台登录一次性转场进中控；desktop broker 增加 `backgroundThrottling`；dockkit/sidebar chrome clearance 修复 |
+| 百应登录入口 + 登录成功判定 | `d4507daf`、`b734b4e5` | 百应改用 canonical 登录入口；登录后首页 URL 白名单判定为已登录并进入中控 |
+| 中控页面缩放 | `56a74c25`、`06efa591` | toolbar + 快捷键 + 每 tab 持久化；默认 80%、支持输入百分比；Web iframe 隐藏缩放组 |
+| 中控座位与侧栏同源动画、导航去重 | `5abdaf99` | 座位几何/过渡交给 frame（复用 `data-animating`）；删除控制台顶栏重复的导航文本按钮，保留侧栏/系统 caption 入口 |
+| 浮窗对话输入框停靠 + Web 布局 e2e | `3ce0ffd8`、`5d2a1db2` | 嵌入式会话 composer 停靠、浮窗宿主铺满；新增 `assistant-window-layout.e2e.ts` |
+
+验证记录：
+
+- 2026-11-21 复跑最新一轮相关单测：4 files / 52 tests PASS（`embedded-conversation` 14、`composer-seat-styles` 11、`console-host` 19、`assistant-window` 8）。
+- 各轮已记录证据（详见对应提交与归档文档）：ecom client 115 / workbench-server 48、相关 client 32 files / 350 tests、`build:artifacts` 8/8、`build:check` 2/2、Web e2e `ecom-workbench` 与 `assistant-window-layout`、`window-drag-coverage` 13/13、`sidebar-right` 22/22。
+- 最新两个提交尚未在本机重跑全量 `build:check` / `test:gui`；收尾前应补一次。
+
+## 当前状态与下一步（2026-11-21）
+
+- **已完成**：M0/M1 + 产品体验轮（工作台优先、悬浮 AI、平台登录/中控、缩放、动效、导航去重）。分支 `product/ecom-workbench`，工作区代码干净。
+- **进行中**：M2-1 登录失效横幅 + 重新登录 + 退出登录清平台分区（`ConsoleController`/`ConsoleHost`/8 语言文案 + 测试，集成后更新本节）。
+- **M2 其余**：AI 侧栏 draft + PII 脱敏；broker 精确 `targetId` 会话化（当前同 origin 多 guest 会 `target/ambiguous`）。
+- **M3**：mock 平台页 e2e、真人手验矩阵、性能实测、全量门禁/文档。
+- **真机验收（需用户扫码）**：登录态刷新、`autoEnter` 冷启动进中控、中控保活、Windows/Web 收起 rail 视觉。
+- **后续**：高风险写执行器（发送/改价/上下架/库存；审批策略已就位）、Windows 未签名打包、品牌/图标。
+- **待确认**：中控深链（当前 `lastConsoleUrl`）、`live-console` 右侧 tab 去留、PII 字段范围。

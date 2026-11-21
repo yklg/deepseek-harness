@@ -129,6 +129,8 @@ export class ConsoleController {
   private loggingOut = false
   /** Whether the current surface already navigated from its login page to the console. */
   private navigatedAfterLogin = false
+  /** Whether a first-load external redirect was already answered with the sign-in entry. */
+  private externalRecoveryTried = false
   private disposed: boolean = false
   private disposal: Promise<void> | undefined
 
@@ -173,8 +175,13 @@ export class ConsoleController {
     }
     // A known signed-in session reopens directly on its console; otherwise the login page is the entry.
     const knownLoggedIn = this.snapshot.platformId === platformId && this.snapshot.loginState === 'in'
+    // A remembered address is restored only while it still belongs to the platform; a
+    // stale external URL (for example a marketing interstitial) falls back to sign-in.
+    const restoredKind = entryUrl === undefined ? undefined : platform.classifyUrl(entryUrl)
+    const restoredEntry = restoredKind === 'console' || restoredKind === 'platform' ? entryUrl : undefined
     // Another platform starts its own visit: its expiry history must not leak in.
     if (this.snapshot.platformId !== platformId) this.signedInOnPlatform = false
+    this.externalRecoveryTried = false
     const generation = ++this.generation
     this.stopProbe()
     this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', loginExpired: false,
@@ -186,7 +193,7 @@ export class ConsoleController {
     try {
       surface = this.options.surface.create({
         storageKey: platform.storageKey(this.options.account ?? DEFAULT_ACCOUNT),
-        initialUrl: entryUrl
+        initialUrl: restoredEntry
           ?? (knownLoggedIn ? platform.consoleEntry.urls[0] : undefined)
           ?? platform.loginUrl,
         backgroundThrottling: false,
@@ -407,6 +414,16 @@ export class ConsoleController {
         // A guest that already probed signed in and is back here lost its session (or signed out in-page), so
         // the host offers recovery instead of silently presenting a fresh login.
         if (kind === 'login') this.navigatedAfterLogin = false
+        // A neutral sign-in entry may redirect a signed-out visitor to a marketing landing
+        // page; answer that first-load redirect once with the explicit QR entry instead of
+        // leaving the console on a foreign page. A second redirect keeps the page issue.
+        if (kind === 'external' && platform.signInUrl !== undefined && !this.externalRecoveryTried) {
+          this.externalRecoveryTried = true
+          this.publish({ phase: 'starting', pageIssue: undefined, blockedLink: undefined,
+            probeError: undefined, loginState: 'out', checking: false })
+          this.surface?.loadUrl(platform.signInUrl)
+          return
+        }
         this.publish({ phase: 'ready', loginState: 'out', checking: false, probeError: undefined,
           loginExpired: kind === 'login' && this.signedInOnPlatform,
           pageIssue: kind === 'external' ? 'left-platform' : undefined })
@@ -524,7 +541,7 @@ export class ConsoleController {
     this.navigatedAfterLogin = false
     this.publish({ loginExpired: false, logoutError: undefined, pageIssue: undefined, blockedLink: undefined,
       probeError: undefined, loginState: 'out', checking: false })
-    this.surface?.loadUrl(platform.loginUrl)
+    this.surface?.loadUrl(platform.signInUrl ?? platform.loginUrl)
   }
 
   /** Abort the in-flight probe and cancel the pending one. */

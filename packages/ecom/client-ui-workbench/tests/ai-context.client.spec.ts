@@ -98,7 +98,7 @@ describe('console page-context reader', () => {
   })
 
   it('reads the visible page text with one read-only script', () => {
-    expect(CONSOLE_TEXT_SCRIPT).toContain('JSON.stringify')
+    expect(CONSOLE_TEXT_SCRIPT).not.toContain('JSON.stringify')
     expect(CONSOLE_TEXT_SCRIPT).toContain('location.href')
     expect(CONSOLE_TEXT_SCRIPT).toContain('document.title')
     expect(CONSOLE_TEXT_SCRIPT).toContain('document.body?.innerText')

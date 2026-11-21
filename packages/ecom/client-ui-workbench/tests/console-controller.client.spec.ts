@@ -125,6 +125,13 @@ describe('ConsoleController', () => {
     await controller.dispose()
   })
 
+  it('falls back to the sign-in page when a remembered address left the platform', async () => {
+    const { controller, surfaces } = controllerFor(async () => outProbe)
+    await controller.open('buyin', 'https://www.douyinec.com/')
+    expect(surfaces[0]?.options.initialUrl).toBe(buyin.loginUrl)
+    await controller.dispose()
+  })
+
   it('restores a remembered console address instead of the login page', async () => {
     const { controller, surfaces } = controllerFor(async () => inProbe)
     await controller.open('buyin', 'https://buyin.jinritemai.com/dashboard/live')
@@ -648,13 +655,21 @@ describe('ConsoleController login recovery', () => {
 })
 
 describe('ConsoleController page classification', () => {
-  it('opens the canonical Buyin sign-in entry and treats a portal page as an outside-platform issue', async () => {
+  it('answers a first-load marketing redirect with the explicit sign-in entry exactly once', async () => {
     const probe = vi.fn(async () => buyinInProbe)
     const { controller, surfaces } = controllerFor(probe)
     await controller.open('buyin')
     expect(surfaces[0]?.options.initialUrl).toBe(buyin.loginUrl)
     surfaces[0]?.emit(page('https://www.douyinec.com/'))
     await vi.advanceTimersByTimeAsync(0)
+    expect(surfaces[0]?.['loadUrl']).toHaveBeenLastCalledWith(buyin.signInUrl)
+    expect(snapshotOf(controller)).toMatchObject({
+      phase: 'starting', pageIssue: undefined, loginState: 'out', probeError: undefined,
+    })
+    // A repeated redirect means the entry cannot recover the session; keep the page issue.
+    surfaces[0]?.emit(page('https://www.douyinec.com/'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(surfaces[0]?.['loadUrl']).toHaveBeenCalledTimes(1)
     expect(snapshotOf(controller)).toMatchObject({
       phase: 'ready', pageIssue: 'left-platform', loginState: 'out', probeError: undefined,
     })
@@ -669,7 +684,7 @@ describe('ConsoleController page classification', () => {
     await vi.advanceTimersByTimeAsync(0)
     controller.navigateToLogin()
     // oxlint-disable-next-line typescript/unbound-method -- vi mock assertion
-    expect(surfaces[0]?.loadUrl).toHaveBeenCalledWith(buyin.loginUrl)
+    expect(surfaces[0]?.loadUrl).toHaveBeenCalledWith(buyin.signInUrl)
     expect(snapshotOf(controller).pageIssue).toBeUndefined()
   })
 

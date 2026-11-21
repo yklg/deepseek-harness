@@ -152,8 +152,10 @@
 
 - 行为：右栏新增 `ai-sidebar` tab：读取当前中控 guest 可见文本（Host Remote evaluate，attach 带精确 targetId）→ 本地 PII 脱敏（手机号/身份证/单号/地址掩码，显示脱敏计数）→ 生成三类草稿提示词（商品讲解脚本/快捷语/评论回复），可复制或直接打开悬浮 AI 助手；未打开中控时显示本地化空态；不发送、不改价、不操作平台。工作台系统状态行新增「AI 侧栏」入口。
 - 接线：`registerAiSidebar(ctx, …)` 注册 tab 类型 + `sidebar.right.pane.tab`/`title` keyed 槽；全部文案 8 语言。
-- 验证：client 17 files / 316 tests PASS（pii 10、ai-context 17、ai-sidebar 12 新增）；`verify-client-ui-i18n`（1300 files）、README pairing、oxlint 0、`tsc -b` PASS。
-- 未验证：真实 Electron 下 tab 视觉/剪贴板/读取体验未目视；jsdom + fake Remote 已覆盖行为与请求参数。
+- 验证：client 17 files / 318 tests PASS（pii 10、ai-context 17、ai-sidebar 12 新增）；`verify-client-ui-i18n`（1300 files）、README pairing、oxlint 0、`tsc -b` PASS。
+- 真机（隔离 dev + CDP，2026-11-21）：打开百应 → 自动恢复到 canonical 扫码页；AI 侧栏「读取页面」成功：显示来源 title/url、`已脱敏 0 处`、页面可见文本、三类草稿切换与生成的提示词（含页面标题/地址/脱敏内容/仅草稿约束），复制/打开 AI 助手入口可用。
+- 真机发现并修复：① 读取脚本返回 `JSON.stringify(...)` 被 broker 再编码一次 → 客户端收到字符串而非对象（改为返回页面对象）；② 百应无 cookie 首载 `loginUrl` 会被平台重定向到 `douyinec.com` 营销页 → 适配器新增 `signInUrl`（`log_out=1` 变体），控制器只在首次加载外跳时自动跳转到它，重复外跳保留左平台错误；`logout`/`relogin`/`navigateToLogin` 也改用该入口；③ 记忆的中控地址恢复前按 `classifyUrl` 校验，外部地址回落到登录入口。
+- 未验证：真实浏览器剪贴板写入（jsdom + 共享 `writeClipboard` 兜底）；Windows/Web 下 tab 视觉。
 
 ## M3-1 验证记录：mock 平台页测试 + URL 分类安全修复（2026-11-21）
 
@@ -165,8 +167,8 @@
 ## M3-2 验证记录：全量 GUI 门禁（2026-11-21）
 
 - 首次 `test:gui`：749 files 中 4 failed / 6 tests failed，全部位于 `packages/client/ui-theme/tests` 对既有产品 CSS 的契约检查（非本轮新增类）：`AssistantWindow.module.css` 的 `.host` 中性边框叠 elevation、`.close:hover` 未加 hover-capable guard；`WorkbenchPage.module.css` 的 1px 中性边框/1px 分隔线、`border-radius: 50%` 缺 `corner-shape: round`、layer-2 卡片所在滚动容器未 rebind 高位滚动条色对。均已按仓库既有约定修复。
-- 修复后复跑：`test:gui` **749 files / 13154 passed / 1 skipped**，186.6s；`test:docs` 21/21（含修复 FORK 中的提交哈希引用，改用日期）；`verify-client-ui-i18n` 1300 files、`verify-translation-pairing` 1214 pairs、oxlint 0。
-- 构建/性能：`build:artifacts` 8/8 gates，16.7s；`build:check` 2/2，33.8s；affected suites 391 tests / 3.3s；ecom client 316 tests / 3.2s（本机 macOS arm64，仅作相对参考）。
+- 修复后复跑：`test:gui` **749 files / 13154 passed / 1 skipped**（最终代码态复跑 249s）；`test:docs` 21/21（含修复 FORK 中的提交哈希引用，改用日期）；`verify-client-ui-i18n` 1300 files、`verify-translation-pairing` 1214 pairs、oxlint 0。
+- 构建/性能：`build:artifacts` 8/8 gates，约 17s；`build:check` 2/2，约 24–34s；ecom client 17 files / 318 tests，约 3.6s（本机 macOS arm64，仅作相对参考）。
 
 ## 真机验收矩阵（2026-11-21，隔离 dev 实例 + CDP）
 
@@ -174,17 +176,19 @@
 |---|---|
 | 启动即工作台、侧栏收起（冷启动） | ✅ 重载后 frame sidebar 0px、工作台首屏 |
 | 会话失效横幅 + 重新登录 | ✅ 强制过期 → 横幅 → 重新登录 → 回百应扫码页 |
+| 百应首载无 cookie 的外部营销跳转恢复 | ✅ 首次加载 `signInUrl`，guest 落在 canonical 扫码页 |
+| AI 侧栏读取 + PII 脱敏 + 提示词 | ✅ 真实 Electron 读取成功（来源/已脱敏计数/草稿/提示词） |
 | 扫码后 ≤5s 登录态刷新 + 自动进中控 | ⏳ 待用户扫码 |
 | 失效后「退出登录」清平台分区 | ⏳ 待用户扫码（按钮仅在横幅内） |
 | `autoEnter` 冷启动自动进中控 | ⏳ 待用户扫码后重启验证 |
 | 中控保活 / 切换平台 / 页面缩放 | ⏳（缩放曾在本机 dev 验证；本轮未复测） |
-| AI 侧栏（新）视觉/剪贴板/读取 | ⏳ 需真实 Electron + 平台页 |
 | broker 同 origin 双 guest 精确 attach | ⏳ 单测覆盖，真机未验 |
 | Windows/Web 收起 rail 视觉 | ⏳ 需对应平台 |
 
 ## 当前状态与下一步（2026-11-21）
 
 - **已完成并推送**：M0/M1 + 产品体验轮 + M2（登录失效/退出登录、broker 精确 targetId、AI 侧栏+PII）+ M3-1（mock 平台页与 URL 分类安全修复）+ M3-2（全量 GUI 门禁修复后全绿）。
-- **待办（需真机/用户）**：上表 ⏳ 项，尤其扫码后登录刷新、退出登录清分区、`autoEnter` 冷启动、AI 侧栏视觉、同 origin 双 guest 精确 attach、Windows/Web rail。
+- **真机已验**：工作台冷启动、失效横幅/重新登录、百应首载外部跳转恢复、AI 侧栏真实读取与提示词生成。
+- **待办（需真机/用户）**：上表 ⏳ 项，尤其扫码后登录刷新、退出登录清分区、`autoEnter` 冷启动、同 origin 双 guest 精确 attach、Windows/Web rail。
 - **后续开发**：高风险写执行器（发送/改价/上下架/库存；审批策略已就位）、Windows 未签名打包、品牌/图标、M3 剩余（Web e2e/快照由 CI、更深性能实测）。
 - **待确认**：中控深链（当前 `lastConsoleUrl`）、`live-console` 右侧 tab 去留、PII 字段范围（当前手机号/身份证/单号/地址）。

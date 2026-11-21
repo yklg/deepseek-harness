@@ -41,6 +41,18 @@ describe('platform registry', () => {
     }
   })
 
+  it('keeps the explicit sign-in entries inside the sign-in origins', () => {
+    for (const platform of PLATFORMS) {
+      if (platform.signInUrl === undefined) continue
+      const parsed = new URL(platform.signInUrl)
+      expect(parsed.protocol).toBe('https:')
+      expect(platform.loginOrigins).toContain(parsed.origin)
+      expect(platform.classifyUrl(platform.signInUrl)).toBe('login')
+    }
+    expect(buyin.signInUrl).toBeDefined()
+    expect(douyinShop.signInUrl).toBeUndefined()
+  })
+
   it('gives each platform a stable per-account storage partition', () => {
     for (const platform of PLATFORMS) {
       expect(platform.storageKey('default')).toBe(`platform:${platform.id}:default`)

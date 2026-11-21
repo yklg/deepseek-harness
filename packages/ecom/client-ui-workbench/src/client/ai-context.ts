@@ -23,7 +23,9 @@ const MAX_CONTEXT_TEXT = 6000
  * and the first 6000 characters of visible text.
  */
 function readPageScript(): string {
-  return `(() => JSON.stringify({
+  // The broker JSON-encodes the evaluated value once; returning a JSON string here
+  // would be encoded twice and reach the client as a string instead of an object.
+  return `(() => ({
   url: location.href,
   title: document.title,
   text: (document.body?.innerText ?? '').slice(0, 6000),

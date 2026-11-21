@@ -32,8 +32,14 @@ export interface PlatformAdapter {
   readonly titleKey: PlatformLocaleKey
   /** Locale key for the card description. */
   readonly descriptionKey: PlatformLocaleKey
-  /** Canonical sign-in entry; `open()` starts here unless a console URL is restored. */
+  /** Sign-in entry used when the session is unknown; opening it must not force a sign-out. */
   readonly loginUrl: string
+  /**
+   * Sign-in entry that starts a fresh QR flow, used by explicit sign-in actions.
+   * Platforms whose neutral login URL redirects to a marketing landing page while
+   * signed out set this; opening a console falls back to it after such a redirect.
+   */
+  readonly signInUrl?: string
   readonly homeUrl: string
   /** Application origins that may be probed through the automation broker. */
   readonly origins: readonly string[]
@@ -194,6 +200,7 @@ export const buyin: PlatformAdapter = {
   titleKey: 'platform.buyin.title',
   descriptionKey: 'platform.buyin.description',
   loginUrl: 'https://buyin.jinritemai.com/mpa/account/login?type=24',
+  signInUrl: 'https://buyin.jinritemai.com/mpa/account/login?log_out=1&type=24',
   homeUrl: 'https://buyin.jinritemai.com/',
   origins: BUYIN_ORIGINS,
   loginOrigins: BUYIN_ORIGINS,

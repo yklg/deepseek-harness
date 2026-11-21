@@ -30,7 +30,8 @@ const workspaces: WorkspaceSnapshot = {
  */
 function snapshot(patch: Partial<ConsoleSnapshot> = {}): ConsoleSnapshot {
   return {
-    view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', checking: false, url: undefined, ...patch,
+    view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', loginExpired: false,
+    checking: false, url: undefined, ...patch,
   }
 }
 
@@ -62,6 +63,8 @@ function hostProps(current: ConsoleSnapshot, overrides: Partial<ConsoleHostProps
     toggleSidebar: vi.fn(),
     refreshLogin: vi.fn(),
     navigateToLogin: vi.fn(),
+    relogin: vi.fn(),
+    logout: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
     resetZoom: vi.fn(),
@@ -244,6 +247,60 @@ describe('shell console host', () => {
     )} />)
     fireEvent.click(screen.getByRole('button', { name: en['platform.aiAssistant'] }))
     expect(toggleAssistant).toHaveBeenCalledOnce()
+  })
+})
+
+describe('shell console expired sign-in', () => {
+  /** Console snapshot with an expired sign-in on the active platform. */
+  const expired = snapshot({
+    view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'out', loginExpired: true,
+  })
+
+  it('shows the expired banner with the sign-in recovery actions', () => {
+    const relogin = vi.fn()
+    const logout = vi.fn()
+    render(<ConsoleHost {...hostProps(expired, { relogin, logout })} />)
+    expect(screen.getByRole('alert').textContent).toBe(en['platform.login.expired'])
+    fireEvent.click(screen.getByRole('button', { name: en['platform.login.relogin'] }))
+    expect(relogin).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: en['platform.logout'] }))
+    expect(logout).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the banner off a signed-out guest that never signed in', () => {
+    render(<ConsoleHost {...hostProps(snapshot({
+      view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'out',
+    }))} />)
+    expect(screen.queryByText(en['platform.login.expired'])).toBeNull()
+    expect(screen.queryByRole('button', { name: en['platform.login.relogin'] })).toBeNull()
+    expect(screen.queryByRole('button', { name: en['platform.logout'] })).toBeNull()
+  })
+
+  it('hides the expired banner outside the console view', () => {
+    render(<ConsoleHost {...hostProps({ ...expired, view: 'select' })} />)
+    expect(screen.queryByText(en['platform.login.expired'])).toBeNull()
+  })
+
+  it('hides the expired banner without desktop support', () => {
+    render(<ConsoleHost {...hostProps(expired, { available: false })} />)
+    expect(screen.getByText(en['platform.desktopOnly'])).toBeTruthy()
+    expect(screen.queryByText(en['platform.login.expired'])).toBeNull()
+  })
+
+  it('reports a failed sign-out below the expired banner', () => {
+    render(<ConsoleHost {...hostProps({ ...expired, logoutError: 'partition busy' })} />)
+    expect(screen.getByText(en['platform.login.expired'])).toBeTruthy()
+    const alerts = screen.getAllByRole('alert').map(element => element.textContent)
+    expect(alerts).toContain(en['platform.logout.failed'].replace('{message}', 'partition busy'))
+  })
+
+  it('keeps the probe retry hint beside the expired banner', () => {
+    render(<ConsoleHost {...hostProps({ ...expired, probeError: 'automation unavailable' })} />)
+    const alerts = screen.getAllByRole('alert').map(element => element.textContent)
+    expect(alerts).toEqual([
+      en['platform.login.expired'],
+      en['platform.probe.failed'].replace('{message}', 'automation unavailable'),
+    ])
   })
 })
 

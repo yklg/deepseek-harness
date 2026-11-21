@@ -103,6 +103,38 @@
   line-height: 1.5;
 }
 
+/* Expired sign-in banner between the top bar and the status line. It owns the
+   recovery actions, so it stays visible while the probe keeps retrying. */
+.expired {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, var(--dsw-alias-bg-layer-1));
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.expiredMessage {
+  margin: 0;
+  font-weight: 500;
+}
+
+.expiredActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
 /* The live surface mounts here; the seat keeps this node for the plugin's lifetime. */
 .viewport {
   flex: 1;

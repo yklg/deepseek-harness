@@ -47,7 +47,7 @@ function fakeSurface(options: BrowserSurfaceOptions): FakeSurface {
     loadUrl: vi.fn(),
     reload: vi.fn(),
     zoom: { limits: { minimum: 0.5, maximum: 3 }, step: vi.fn() },
-    clearStorage: async () => {},
+    clearStorage: vi.fn(async () => {}),
     dispose: vi.fn(async () => {}),
   }
   return surface
@@ -412,6 +412,215 @@ describe('ConsoleController', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(surfaces[1]?.['loadUrl']).toHaveBeenCalledExactlyOnceWith(buyin.consoleEntry.urls[0])
     await controller.dispose()
+  })
+})
+
+describe('ConsoleController login recovery', () => {
+  /** Mutable probe the fake port resolves; tests swap `value` to move the login state. */
+  interface ProbePort { value: PlatformProbe }
+
+  /**
+   * Open Douyin Shop on a signed-in probe, then flip the probe signed out so the
+   * login counts as expired.
+   * @param result - controller and fake surfaces under test.
+   * @param port - probe result holder the fake port reads.
+   * @returns after the signed-out probe published.
+   */
+  async function expireLogin(
+    result: { controller: ConsoleController; surfaces: FakeSurface[] },
+    port: ProbePort,
+  ): Promise<void> {
+    port.value = inProbe
+    await result.controller.open('douyin-shop')
+    result.surfaces[0]?.emit(page(douyinShop.consoleEntry.urls[0] ?? ''))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(result.controller)).toMatchObject({ loginState: 'in', loginExpired: false })
+    port.value = outProbe
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(snapshotOf(result.controller)).toMatchObject({ loginState: 'out', loginExpired: true })
+  }
+
+  it('marks the login expired only after a signed-in probe is followed by a signed-out one', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    await expireLogin(result, port)
+    port.value = inProbe
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(snapshotOf(result.controller)).toMatchObject({ loginState: 'in', loginExpired: false })
+    await result.controller.dispose()
+  })
+
+  it('marks the login expired when a signed-in guest is returned to its sign-in page', async () => {
+    const { controller, surfaces } = controllerFor(async () => inProbe)
+    await controller.open('douyin-shop')
+    surfaces[0]?.emit(page(douyinShop.consoleEntry.urls[0] ?? ''))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'in', loginExpired: false })
+    // The platform flushed the session and redirected the guest before the next probe ran.
+    surfaces[0]?.emit(page(douyinShop.loginUrl))
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: true })
+    controller.relogin()
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: false })
+    await controller.dispose()
+  })
+
+  it('does not mark a guest that never probed signed in as expired', async () => {
+    const { controller, surfaces } = controllerFor(async () => outProbe)
+    await controller.open('douyin-shop')
+    surfaces[0]?.emit(page('https://fxg.jinritemai.com/help'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: false })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: false })
+    await controller.dispose()
+  })
+
+  it('does not treat a failed probe as an expired login', async () => {
+    let fail = false
+    const { controller, surfaces } = controllerFor(async () => {
+      if (fail) throw new Error('automation unavailable')
+      return inProbe
+    })
+    await controller.open('douyin-shop')
+    surfaces[0]?.emit(page(douyinShop.consoleEntry.urls[0] ?? ''))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller).loginState).toBe('in')
+    fail = true
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(snapshotOf(controller)).toMatchObject({
+      loginState: 'in', loginExpired: false, probeError: 'automation unavailable',
+    })
+    await controller.dispose()
+  })
+
+  it('returns the expired guest to the sign-in entry and clears the notice on relogin', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    await expireLogin(result, port)
+    const surface = result.surfaces[0]
+    if (surface === undefined) throw new Error('expected a created surface')
+    vi.mocked(surface['loadUrl']).mockClear()
+    result.controller.relogin()
+    expect(surface['loadUrl']).toHaveBeenCalledExactlyOnceWith(douyinShop.loginUrl)
+    expect(snapshotOf(result.controller)).toMatchObject({
+      loginExpired: false, loginState: 'out', checking: false, probeError: undefined,
+      pageIssue: undefined, blockedLink: undefined, logoutError: undefined,
+    })
+    // A signed-in probe after the fresh sign-in resumes the console transition.
+    port.value = inProbe
+    surface.emit(page('https://fxg.jinritemai.com/'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(surface['loadUrl']).toHaveBeenLastCalledWith(douyinShop.consoleEntry.urls[0])
+    expect(snapshotOf(result.controller)).toMatchObject({ loginState: 'in', loginExpired: false })
+    await result.controller.dispose()
+  })
+
+  it('clears the platform partition and returns to sign-in on sign-out', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    await expireLogin(result, port)
+    const surface = result.surfaces[0]
+    if (surface === undefined) throw new Error('expected a created surface')
+    await result.controller.logout()
+    expect(surface['clearStorage']).toHaveBeenCalledOnce()
+    expect(surface['loadUrl']).toHaveBeenLastCalledWith(douyinShop.loginUrl)
+    expect(snapshotOf(result.controller)).toMatchObject({
+      loginExpired: false, loginState: 'out', checking: false, probeError: undefined,
+      pageIssue: undefined, blockedLink: undefined, logoutError: undefined,
+    })
+    await result.controller.dispose()
+  })
+
+  it('reports a failed partition clear and stays usable for a retry', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    await expireLogin(result, port)
+    const surface = result.surfaces[0]
+    if (surface === undefined) throw new Error('expected a created surface')
+    vi.mocked(surface['clearStorage']).mockRejectedValueOnce(new Error('partition busy'))
+    vi.mocked(surface['loadUrl']).mockClear()
+    await result.controller.logout()
+    expect(snapshotOf(result.controller)).toMatchObject({
+      loginExpired: true, loginState: 'out', logoutError: 'partition busy',
+    })
+    expect(surface['loadUrl']).not.toHaveBeenCalled()
+    vi.mocked(surface['clearStorage']).mockResolvedValueOnce(undefined)
+    await result.controller.logout()
+    expect(snapshotOf(result.controller)).toMatchObject({ loginExpired: false, logoutError: undefined })
+    expect(surface['loadUrl']).toHaveBeenLastCalledWith(douyinShop.loginUrl)
+    await result.controller.dispose()
+  })
+
+  it('ignores sign-out without a surface, without a platform, and after disposal', async () => {
+    const { controller, surfaces } = controllerFor(async () => inProbe)
+    await controller.logout()
+    controller.relogin()
+    controller.navigateToLogin()
+    expect(surfaces).toHaveLength(0)
+    await controller.open('douyin-shop')
+    const surface = surfaces[0]
+    if (surface === undefined) throw new Error('expected a created surface')
+    await controller.dispose()
+    await controller.logout()
+    expect(surface['clearStorage']).not.toHaveBeenCalled()
+  })
+
+  it('runs one partition clear for concurrent sign-out requests', async () => {
+    const { controller, surfaces } = controllerFor(async () => inProbe)
+    await controller.open('douyin-shop')
+    const surface = surfaces[0]
+    if (surface === undefined) throw new Error('expected a created surface')
+    let release = (): void => {}
+    vi.mocked(surface['clearStorage']).mockImplementationOnce(() => new Promise<void>((resolve) => { release = resolve }))
+    const first = controller.logout()
+    const second = controller.logout()
+    await second
+    expect(surface['clearStorage']).toHaveBeenCalledOnce()
+    release()
+    await first
+    expect(surface['loadUrl']).toHaveBeenLastCalledWith(douyinShop.loginUrl)
+    await controller.dispose()
+  })
+
+  it('resumes the console transition after the platform returns to its own sign-in page', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    const { controller, surfaces } = result
+    await controller.open('douyin-shop')
+    surfaces[0]?.emit(page('https://fxg.jinritemai.com/help'))
+    await vi.advanceTimersByTimeAsync(0)
+    // The signed-in probe sends the guest to the console once.
+    expect(surfaces[0]?.['loadUrl']).toHaveBeenLastCalledWith(douyinShop.consoleEntry.urls[0])
+    port.value = outProbe
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: true })
+    // The platform redirects the expired guest to its sign-in page; the banner stays.
+    surfaces[0]?.emit(page(douyinShop.loginUrl))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'out', loginExpired: true })
+    // A fresh sign-in lands on a platform page and the probe resumes the console transition.
+    port.value = inProbe
+    surfaces[0]?.emit(page('https://fxg.jinritemai.com/help'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(surfaces[0]?.['loadUrl']).toHaveBeenCalledTimes(2)
+    expect(surfaces[0]?.['loadUrl']).toHaveBeenLastCalledWith(douyinShop.consoleEntry.urls[0])
+    expect(snapshotOf(controller)).toMatchObject({ loginState: 'in', loginExpired: false })
+    await controller.dispose()
+  })
+
+  it('clears the expiry history when another platform opens', async () => {
+    const port: ProbePort = { value: inProbe }
+    const result = controllerFor(async () => port.value)
+    await expireLogin(result, port)
+    port.value = outProbe
+    await result.controller.open('buyin')
+    expect(snapshotOf(result.controller)).toMatchObject({
+      platformId: 'buyin', loginState: 'unknown', loginExpired: false,
+    })
+    result.surfaces[1]?.emit(page('https://buyin.jinritemai.com/dashboard'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(snapshotOf(result.controller)).toMatchObject({ loginState: 'out', loginExpired: false })
+    await result.controller.dispose()
   })
 })
 

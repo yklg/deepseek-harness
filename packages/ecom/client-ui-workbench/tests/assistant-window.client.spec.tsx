@@ -12,11 +12,12 @@ import { en } from '../src/client/locales.ts'
 afterEach(cleanup)
 
 const idleConsole: ConsoleSnapshot = {
-  view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', checking: false, url: undefined,
+  view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', loginExpired: false,
+  checking: false, url: undefined,
 }
 const liveConsole: ConsoleSnapshot = {
-  view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'in', checking: false,
-  url: 'https://fxg.jinritemai.com/ffa/content-tool/live/control',
+  view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'in', loginExpired: false,
+  checking: false, url: 'https://fxg.jinritemai.com/ffa/content-tool/live/control',
 }
 const closed: AssistantWindowSnapshot = { open: false, rect: { x: 748, y: 168, width: 520, height: 640 } }
 const open: AssistantWindowSnapshot = { open: true, rect: { x: 748, y: 168, width: 520, height: 640 } }

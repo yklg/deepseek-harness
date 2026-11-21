@@ -45,6 +45,10 @@ export interface ConsoleHostInjected {
   readonly refreshLogin: () => void
   /** Return an out-of-platform guest to the canonical sign-in entry. */
   readonly navigateToLogin: () => void
+  /** Return an expired guest to the platform sign-in entry and clear the notice. */
+  readonly relogin: () => void
+  /** Clear the platform partition and return the guest to the sign-in entry. */
+  readonly logout: () => void
   /** Switch the main column to the AI assistant conversation. */
   readonly toggleAssistant: () => void
 }
@@ -102,7 +106,7 @@ function hintOf(snapshot: ConsoleSnapshot, available: boolean, t: ConsoleHostPro
 export function ConsoleHost(props: ConsoleHostProps): ReactNode {
   const {
     useConsole, usePanelInfo, attach, panelId, available, showSelection, retry,
-    refreshLogin, navigateToLogin, zoomIn, zoomOut, resetZoom, toggleAssistant, t,
+    refreshLogin, navigateToLogin, relogin, logout, zoomIn, zoomOut, resetZoom, toggleAssistant, t,
   } = props
   const snapshot = useConsole(state => state)
   const panelActive = usePanelInfo(info => info.activePanelId === panelId)
@@ -112,6 +116,8 @@ export function ConsoleHost(props: ConsoleHostProps): ReactNode {
   const platform = snapshot.platformId === null ? undefined : platformById(snapshot.platformId)
   const viewport = useRef<HTMLDivElement | null>(null)
   const hint = snapshot.view === 'console' ? hintOf(snapshot, available, t) : undefined
+  const expired = available && snapshot.view === 'console' && snapshot.loginExpired
+  const logoutError = snapshot.view === 'console' ? snapshot.logoutError : undefined
 
   useEffect(() => {
     if (active) {
@@ -185,6 +191,20 @@ export function ConsoleHost(props: ConsoleHostProps): ReactNode {
           </div>
         </header>
       ) : null}
+      {expired ? (
+        <div className={css.expired} data-ecom-console-login-expired="true">
+          <p className={css.expiredMessage} role="alert">{t('platform.login.expired')}</p>
+          <div className={css.expiredActions}>
+            <Button size="sm" variant="outline" onClick={relogin}>{t('platform.login.relogin')}</Button>
+            <Button size="sm" variant="ghost" onClick={logout}>{t('platform.logout')}</Button>
+          </div>
+        </div>
+      ) : null}
+      {logoutError === undefined ? null : (
+        <p className={css.error} role="alert" data-ecom-console-logout-error="true">
+          {t('platform.logout.failed', { message: logoutError })}
+        </p>
+      )}
       {hint === undefined ? null : (
         <p
           className={hint.tone === 'error' ? css.error : css.hint}

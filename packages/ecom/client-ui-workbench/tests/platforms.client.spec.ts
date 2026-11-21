@@ -74,6 +74,15 @@ describe('platform registry', () => {
     }
   })
 
+  it('ships the expired sign-in copy and its failure message in every dictionary', () => {
+    for (const dictionary of platformDictionaries) {
+      for (const key of ['platform.login.expired', 'platform.login.relogin', 'platform.logout'] as const) {
+        expect(dictionary[key].length).toBeGreaterThan(0)
+      }
+      expect(dictionary['platform.logout.failed']).toContain('{message}')
+    }
+  })
+
   it('merges the platform copy into every workbench dictionary with identical keys', () => {
     const keys = Object.keys(zh).sort()
     for (const dictionary of [en, ja, es, fr, de, ru, pt]) {

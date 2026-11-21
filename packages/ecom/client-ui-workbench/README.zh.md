@@ -33,6 +33,7 @@ kind: "package-reference"
 - 进入平台时，在该平台的持久分区上打开登录页，或恢复上次登录态中记住的中控地址。分区键为 `platform:<platformId>:<accountId>`，因此两个平台各自保留登录态，重启后仍然有效。
 - 中控座位由 frame 定位到侧栏边界；座位、顶栏与内嵌页面跟随侧栏 track 的 toggle 动效。顶栏包含平台名称、探测到的登录态、页面缩放（`−`、百分比、`+`；默认 80%，范围 50%–300%，步进 10%，点击百分比回 100%）、**刷新登录状态**、**AI 助手**、**切换平台**，以及失败后的重试。缩放只作用于内嵌页面，仅限桌面端；平台表面被替换时回到 100%，当 guest 获得焦点时，Cmd/Ctrl+=、Cmd/Ctrl+- 与 Cmd/Ctrl+0 可步进或重置页面缩放，Cmd/Ctrl+滚轮也可步进；toolbar 仍是可发现路径。切换到其他主面板时该座位保持挂载；切换控制台视图时先滑出再以 `visibility` 隐藏，产品不再渲染第二个导航开关；桌面端 guest 关闭后台节流运行。
 - 只读探针通过 Host 自动化 broker 大约每 90 秒执行一次平台适配器脚本，并在窗口重新获得焦点或用户刷新登录态时立即执行。它报告 `in`、`out` 或 `unknown`；控制台不会把无法读取的页面当作已登录。
+- 本次中控会话曾探测到已登录、随后又探测到未登录时，登录即判定为失效；平台把访客重定向回登录页同样按失效处理。状态行上方会出现横幅，提供 **重新登录**（回到平台标准登录入口，重新走常规的探针到中控流程）与 **退出登录**（先清空该平台的持久分区，再回到登录入口）。退出失败时中控仍可用，横幅下方显示错误，下次尝试会重试；横幅不会取代探针的自动重试提示。
 - 云营看板、实时控制台标签页与浏览器标签页保持原有行为，入口放在低调的系统状态行；快捷入口会先回到已选会话，再打开对应标签页。
 - Web 端平台卡禁用并显示本地化的桌面端提示；工作台页面其余部分照常工作。
 - 文案位于 `ecomWorkbench` 命名空间并合并平台字典，随包发布八种语言。
@@ -44,7 +45,7 @@ kind: "package-reference"
 
 `src/client/startup.ts` 负责启动决策：选中工作台主面板一次、收起 harness 侧栏，并在开启自动进入且存在上次平台时，于首帧之后打开该平台。用户抢先导航时以用户为准。
 
-`src/client/ConsoleController.ts` 持有当前 `BrowserSurface`、它的挂载座位、探针定时器与发布的 `ConsoleSnapshot`（`view`、`phase`、`platformId`、`loginState`、`checking`、`url` 与错误）。一个 generation 计数丢弃被更新的打开或释放取代的探针与表面创建。`refreshLogin()` 在控制台重新可见或窗口获得焦点时安排一次立即探针。切换平台时先释放座位挂载再销毁上一个表面；显示平台列表时保持当前表面存活。
+`src/client/ConsoleController.ts` 持有当前 `BrowserSurface`、它的挂载座位、探针定时器与发布的 `ConsoleSnapshot`（`view`、`phase`、`platformId`、`loginState`、`loginExpired`、`checking`、`url` 与错误）。本次访问先探测到 `in`、之后探测到 `out` 时置 `loginExpired`；`relogin()` 把 guest 送回登录入口，`logout()` 先清空平台分区并把清空失败写入 `logoutError`。一个 generation 计数丢弃被更新的打开或释放取代的探针与表面创建。`refreshLogin()` 在控制台重新可见或窗口获得焦点时安排一次立即探针。切换平台时先释放座位挂载再销毁上一个表面；显示平台列表时保持当前表面存活。
 
 `src/client/platforms.ts` 声明平台注册表：登录与首页 URL、允许的 origin、只读探针脚本、存储键与登录态判定。`src/client/platform-probe.ts` 通过 Host 自动化 broker 绑定平台 origin、执行探针脚本、在 wire 边界校验返回的 JSON，并且总是释放目标。`src/client/platform-preferences.ts` 逐字段校验持久化值，以内存快照为准。
 

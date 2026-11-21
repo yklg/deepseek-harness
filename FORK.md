@@ -134,12 +134,18 @@
 - 各轮已记录证据（详见对应提交与归档文档）：ecom client 115 / workbench-server 48、相关 client 32 files / 350 tests、`build:artifacts` 8/8、`build:check` 2/2、Web e2e `ecom-workbench` 与 `assistant-window-layout`、`window-drag-coverage` 13/13、`sidebar-right` 22/22。
 - 最新两个提交尚未在本机重跑全量 `build:check` / `test:gui`；收尾前应补一次。
 
+## M2-1 验证记录：登录失效与退出登录（2026-11-21）
+
+- 行为：`ConsoleSnapshot` 新增 `loginExpired`/`logoutError`；本平台本轮探针先 `in` 后 `out`，或已登录访客被平台重定向回登录页时判定失效；`relogin()` 回标准登录入口并恢复常规「探针 → 中控」转场；`logout()` 先 `surface.clearStorage()` 清平台持久分区再回登录页，失败经 `logoutError` 呈现且可重试，并发调用只执行一次；`open()` 新平台、`logout()`/`relogin()` 成功、探针重新 `in` 均清除失效态。
+- UI：中控顶栏与状态行之间显示失效横幅（`platform.login.expired` + 「重新登录」「退出登录」），`logoutError` 独立 `role=alert` 行；8 语言文案键集一致；横幅独立于既有探针重试提示。
+- 验证：`pnpm exec vitest run packages/ecom/client-ui-workbench/tests` → 13 files / 201 tests PASS（新增控制器 10+1、宿主 6、文案 parity 1）；`tsc -b` 包级、`verify-client-ui-i18n`（1296 files）、`build:artifacts`（8/8）、`build:check`（2/2）、`verify-translation-pairing`（1214 pairs）、oxlint 0。
+- 未验证：真实 Electron 下的横幅渲染（明暗主题/窄宽换行）与真实 `clearStorage` 登出流，需桌面实例 + 官方扫码；`build:check` 曾因测试中 `consoleEntry.urls[0]` 的可空类型失败，已修。
+
 ## 当前状态与下一步（2026-11-21）
 
-- **已完成**：M0/M1 + 产品体验轮（工作台优先、悬浮 AI、平台登录/中控、缩放、动效、导航去重）。分支 `product/ecom-workbench`，工作区代码干净。
-- **进行中**：M2-1 登录失效横幅 + 重新登录 + 退出登录清平台分区（`ConsoleController`/`ConsoleHost`/8 语言文案 + 测试，集成后更新本节）。
+- **已完成**：M0/M1 + 产品体验轮（工作台优先、悬浮 AI、平台登录/中控、缩放、动效、导航去重）；M2-1 登录失效横幅 + 重新登录 + 退出登录清平台分区。
 - **M2 其余**：AI 侧栏 draft + PII 脱敏；broker 精确 `targetId` 会话化（当前同 origin 多 guest 会 `target/ambiguous`）。
 - **M3**：mock 平台页 e2e、真人手验矩阵、性能实测、全量门禁/文档。
-- **真机验收（需用户扫码）**：登录态刷新、`autoEnter` 冷启动进中控、中控保活、Windows/Web 收起 rail 视觉。
+- **真机验收（需用户扫码）**：登录态刷新、`autoEnter` 冷启动进中控、中控保活、失效横幅/重新登录/退出登录清分区、Windows/Web 收起 rail 视觉。
 - **后续**：高风险写执行器（发送/改价/上下架/库存；审批策略已就位）、Windows 未签名打包、品牌/图标。
 - **待确认**：中控深链（当前 `lastConsoleUrl`）、`live-console` 右侧 tab 去留、PII 字段范围。

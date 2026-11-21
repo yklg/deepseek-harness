@@ -1,9 +1,9 @@
 /**
  * Long-lived owner of the platform console: one browser surface per active
- * platform, its periodic read-only login probe, the one-time login-to-console
- * transition, and the workbench view that shows it. The controller lives for the
- * client plugin's lifetime, so switching the main panel away from the workbench
- * unmounts only the page, never the console guest.
+ * platform, its periodic read-only login probe, the login-to-console transition,
+ * expired sign-in recovery, sign-out, and the workbench view that shows it. The
+ * controller lives for the client plugin's lifetime, so switching the main panel
+ * away from the workbench unmounts only the page, never the console guest.
  */
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
 import type { BrowserSurface, BrowserSurfaceService } from '@deepseek-ai/dsh-client-ui-sidebar-browser/client'
@@ -26,6 +26,8 @@ export interface ConsoleSnapshot {
   readonly platformId: PlatformId | null
   /** Login state from the latest successful probe. */
   readonly loginState: PlatformLoginState
+  /** True after the active platform probed signed in and then probed signed out. */
+  readonly loginExpired: boolean
   /** True while a login probe is in flight. */
   readonly checking: boolean
   /** Address the active surface currently shows, when it reported one. */
@@ -38,6 +40,8 @@ export interface ConsoleSnapshot {
   readonly error?: string | undefined
   /** Failure of the latest login probe; the next probe retries automatically. */
   readonly probeError?: string | undefined
+  /** Failure of the latest sign-out; the console stays usable and a later attempt clears it. */
+  readonly logoutError?: string | undefined
   /** Set while the guest shows a page outside the selected platform. */
   readonly pageIssue?: 'left-platform' | undefined
   /** Set after a blocked external new-window request; cleared on navigation. */
@@ -98,7 +102,8 @@ export class ConsoleController {
   private readonly options: ConsoleControllerOptions
   private readonly listeners = new Set<() => void>()
   private snapshot: ConsoleSnapshot = {
-    view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', checking: false, url: undefined,
+    view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', loginExpired: false,
+    checking: false, url: undefined,
   }
   private surface: BrowserSurface | undefined
   private unsubscribeSurface: (() => void) | undefined
@@ -108,6 +113,10 @@ export class ConsoleController {
   private probeTimer: ReturnType<typeof setTimeout> | undefined
   private generation = 0
   private lastProbeFailed = false
+  /** Whether the current platform already probed signed in during this visit. */
+  private signedInOnPlatform = false
+  /** Serializes sign-out so a second request while the partition clears is ignored. */
+  private loggingOut = false
   /** Whether the current surface already navigated from its login page to the console. */
   private navigatedAfterLogin = false
   private disposed: boolean = false
@@ -143,8 +152,8 @@ export class ConsoleController {
     const platform = platformById(platformId)
     if (platform === undefined) throw new Error(`console controller: unknown platform "${platformId}"`)
     if (!this.available) {
-      this.publish({ view: 'select', phase: 'failed', platformId: null, loginState: 'unknown', checking: false,
-        url: undefined, probeError: undefined })
+      this.publish({ view: 'select', phase: 'failed', platformId: null, loginState: 'unknown',
+        loginExpired: false, checking: false, url: undefined, probeError: undefined })
       return
     }
     if (this.snapshot.platformId === platformId && this.surface !== undefined) {
@@ -154,11 +163,13 @@ export class ConsoleController {
     }
     // A known signed-in session reopens directly on its console; otherwise the login page is the entry.
     const knownLoggedIn = this.snapshot.platformId === platformId && this.snapshot.loginState === 'in'
+    // Another platform starts its own visit: its expiry history must not leak in.
+    if (this.snapshot.platformId !== platformId) this.signedInOnPlatform = false
     const generation = ++this.generation
     this.stopProbe()
-    this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', checking: false,
-      url: undefined, zoomFactor: undefined, zoomLimits: undefined,
-      error: undefined, probeError: undefined, pageIssue: undefined, blockedLink: undefined })
+    this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', loginExpired: false,
+      checking: false, url: undefined, zoomFactor: undefined, zoomLimits: undefined,
+      error: undefined, probeError: undefined, logoutError: undefined, pageIssue: undefined, blockedLink: undefined })
     await this.releaseSurface()
     if (this.isStale(generation)) return
     let surface: BrowserSurface
@@ -229,9 +240,52 @@ export class ConsoleController {
     if (this.disposed) return
     const platform = this.snapshot.platformId === null ? undefined : platformById(this.snapshot.platformId)
     if (platform === undefined || this.surface === undefined) return
-    this.stopProbe()
-    this.publish({ pageIssue: undefined, blockedLink: undefined, probeError: undefined, loginState: 'out', checking: false })
-    this.surface.loadUrl(platform.loginUrl)
+    this.returnToLogin(platform)
+  }
+
+  /**
+   * Return an expired guest to the platform sign-in entry so the user can sign in
+   * again; the next signed-in probe resumes the console transition. The recovery
+   * visit starts without signed-in history, so a signed-out probe before the new
+   * sign-in does not re-expire the login.
+   */
+  relogin(): void {
+    // The sign-in redirect is shared with the left-platform action; expiry adds no destination.
+    this.navigateToLogin()
+  }
+
+  /**
+   * Clear the active platform's persistent partition and return its guest to the
+   * sign-in entry. A failed sign-out publishes {@link ConsoleSnapshot.logoutError}
+   * and leaves the console usable for a later attempt; a second call while the
+   * partition clears is ignored. Without a surface, platform, or after disposal
+   * this is a no-op.
+   * @returns after the partition clear and the state reset settle.
+   */
+  async logout(): Promise<void> {
+    if (this.disposed || this.loggingOut) return
+    const platform = this.snapshot.platformId === null ? undefined : platformById(this.snapshot.platformId)
+    const surface = this.surface
+    if (platform === undefined || surface === undefined) return
+    this.loggingOut = true
+    const generation = this.generation
+    this.publish({ logoutError: undefined })
+    try {
+      await surface.clearStorage()
+      if (this.isStale(generation)) return
+      this.stopProbe()
+      this.signedInOnPlatform = false
+      this.navigatedAfterLogin = false
+      this.publish({ loginExpired: false, probeError: undefined, pageIssue: undefined, blockedLink: undefined,
+        loginState: 'out', checking: false, logoutError: undefined })
+      surface.loadUrl(platform.loginUrl)
+    } catch (error) {
+      // A failed partition clear or return navigation keeps the console usable; the next attempt retries.
+      if (this.isStale(generation)) return
+      this.publish({ logoutError: messageOf(error) })
+    } finally {
+      this.loggingOut = false
+    }
   }
 
   /**
@@ -338,7 +392,12 @@ export class ConsoleController {
       const kind = platform.classifyUrl(url)
       if (kind === 'login' || kind === 'external') {
         this.stopProbe()
+        // A sign-in page starts a new episode: the signed-in probe that follows may navigate to the console again.
+        // A guest that already probed signed in and is back here lost its session (or signed out in-page), so
+        // the host offers recovery instead of silently presenting a fresh login.
+        if (kind === 'login') this.navigatedAfterLogin = false
         this.publish({ phase: 'ready', loginState: 'out', checking: false, probeError: undefined,
+          loginExpired: kind === 'login' && this.signedInOnPlatform,
           pageIssue: kind === 'external' ? 'left-platform' : undefined })
         return
       }
@@ -378,7 +437,16 @@ export class ConsoleController {
       const probe = await this.options.probe(platform, controller.signal)
       if (this.isStale(generation, controller.signal)) return
       this.lastProbeFailed = false
-      this.publish({ loginState: platform.loginState(probe), probeError: undefined })
+      // Expiry needs a signed-in observation first; a probe that never saw `in` is a plain signed-out guest.
+      const loginState = platform.loginState(probe)
+      let loginExpired = this.snapshot.loginExpired
+      if (loginState === 'in') {
+        loginExpired = false
+        this.signedInOnPlatform = true
+      } else if (loginState === 'out') {
+        loginExpired = this.signedInOnPlatform
+      }
+      this.publish({ loginState, loginExpired, probeError: undefined })
       this.navigateToConsole(platform)
     } catch (error) {
       if (this.isStale(generation, controller.signal)) return
@@ -427,6 +495,22 @@ export class ConsoleController {
       // The surface rejected the address before loading it; the one-shot marker stays clear so a refresh retries.
       this.publish({ probeError: messageOf(error) })
     }
+  }
+
+  /**
+   * Return the guest to the platform sign-in entry and clear the transient notices
+   * that the fresh attempt supersedes, including the one-shot console transition.
+   * The visit starts without signed-in history, so a signed-out probe before the
+   * new sign-in does not re-expire the login.
+   * @param platform - adapter whose sign-in entry receives the guest.
+   */
+  private returnToLogin(platform: PlatformAdapter): void {
+    this.stopProbe()
+    this.signedInOnPlatform = false
+    this.navigatedAfterLogin = false
+    this.publish({ loginExpired: false, logoutError: undefined, pageIssue: undefined, blockedLink: undefined,
+      probeError: undefined, loginState: 'out', checking: false })
+    this.surface?.loadUrl(platform.loginUrl)
   }
 
   /** Abort the in-flight probe and cancel the pending one. */

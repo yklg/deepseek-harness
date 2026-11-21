@@ -310,6 +310,9 @@ function registerUi(ctx: ClientContext): void {
       retry: () => { controller.retry() },
       refreshLogin: () => { controller.refreshLogin() },
       navigateToLogin: () => { controller.navigateToLogin() },
+      relogin: () => { controller.relogin() },
+      // The dispatch only starts the clear; failures surface through the console snapshot.
+      logout: () => { void controller.logout() },
       zoomIn: () => { controller.zoomIn() },
       zoomOut: () => { controller.zoomOut() },
       resetZoom: () => { controller.resetZoom() },

@@ -18,18 +18,21 @@ const sessions: SessionListState = { ids: [], byId: {}, projectionsBySession: {}
 const workspaces: WorkspaceSnapshot = { items: [], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null }
 
 const idleConsole: ConsoleSnapshot = {
-  view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', checking: false, url: undefined,
+  view: 'select', phase: 'idle', platformId: null, loginState: 'unknown', loginExpired: false,
+  checking: false, url: undefined,
 }
 const runningConsole: ConsoleSnapshot = {
   view: 'console',
   phase: 'ready',
   platformId: 'douyin-shop',
   loginState: 'in',
+  loginExpired: false,
   checking: false,
   url: 'https://fxg.jinritemai.com/ffa/content-tool/live/control',
 }
 const signedOutConsole: ConsoleSnapshot = {
-  view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'out', checking: false, url: undefined,
+  view: 'console', phase: 'ready', platformId: 'douyin-shop', loginState: 'out', loginExpired: false,
+  checking: false, url: undefined,
 }
 const defaultPreferences: PlatformPreferences = { autoEnter: false, lastPlatform: null, lastConsoleUrl: null }
 

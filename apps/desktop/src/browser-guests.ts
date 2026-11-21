@@ -43,9 +43,11 @@ export interface AutomationLifecycleEvent {
   readonly reason: DesktopBrowserGuestEndReason
 }
 
-/** Attach input; `allowOrigins` is validated here because the Host is a wire peer. */
+/** Attach input; every field is validated here because the Host is a wire peer. */
 export interface AutomationAttachInput {
   readonly allowOrigins: unknown
+  /** Renderer-side guest identity (WebContents id); selects one guest when several share an origin. */
+  readonly targetId?: unknown
 }
 
 /** Eval input; every field is validated here because the Host is a wire peer. */
@@ -79,6 +81,12 @@ interface GuestLease {
 
 interface GuestEndListener {
   (targetId: DesktopBrowserLeaseId, reason: DesktopBrowserGuestEndReason): void
+}
+
+/** One live automation guest with its lease identity. */
+interface AutomationGuest {
+  readonly targetId: DesktopBrowserLeaseId
+  readonly guest: WebContents
 }
 
 interface OriginRule {
@@ -116,6 +124,13 @@ function assertTargetId(value: unknown): DesktopBrowserLeaseId {
     throw new TypeError('desktop automation: a target identity is required')
   }
   return value as DesktopBrowserLeaseId
+}
+
+function assertGuestTargetId(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) {
+    throw new TypeError('desktop automation: targetId must be a positive web contents identity')
+  }
+  return value
 }
 
 function compileAllowOrigins(input: unknown): readonly OriginRule[] {
@@ -365,8 +380,8 @@ export class DesktopBrowserGuests {
    * Live guests the automation broker may target, in acquisition order.
    * @returns attached, undisturbed guest contents with their lease identities.
    */
-  automationGuests(): readonly { readonly targetId: DesktopBrowserLeaseId; readonly guest: WebContents }[] {
-    const guests: { targetId: DesktopBrowserLeaseId; guest: WebContents }[] = []
+  automationGuests(): readonly AutomationGuest[] {
+    const guests: AutomationGuest[] = []
     for (const [targetId, lease] of this.leases) {
       const guest = lease.guest
       if (guest === undefined || lease.ended || guest.isDestroyed()) continue
@@ -462,10 +477,14 @@ export class AutomationBroker {
    * its allowlist and keeps its serialized call queue.
    * @param input - Host-supplied allowlist; exact origins and '*.domain' suffix rules are accepted.
    * @returns the bound target identity and its current URL.
-   * @throws AutomationBrokerError with `target/not-found` or `target/ambiguous`.
+   * @throws AutomationBrokerError with `target/not-found`, `target/ambiguous`, or, for an
+   * explicit `targetId`, `target/origin-denied`.
    */
   attach(input: AutomationAttachInput): AutomationTarget {
     const allowOrigins = compileAllowOrigins(input.allowOrigins)
+    if (input.targetId !== undefined) {
+      return this.attachGuest(assertGuestTargetId(input.targetId), allowOrigins)
+    }
     const matches = this.guests.automationGuests().filter(({ guest }) => originAllowed(guest.getURL(), allowOrigins))
     const match = matches[0]
     if (match === undefined) {
@@ -474,10 +493,7 @@ export class AutomationBroker {
     if (matches.length > 1) {
       throw new AutomationBrokerError('target/ambiguous', 'desktop automation: several guests match the allowlist')
     }
-    const previous = this.attachedTargets.get(match.targetId)
-    this.attachedTargets.set(match.targetId, { allowOrigins, pending: previous?.pending ?? Promise.resolve() })
-    this.closedTargets.delete(match.targetId)
-    return { targetId: match.targetId, url: match.guest.getURL() }
+    return this.bindTarget(match, allowOrigins)
   }
 
   /**
@@ -540,6 +556,31 @@ export class AutomationBroker {
     this.stopListening()
     this.attachedTargets.clear()
     this.closedTargets.clear()
+  }
+
+  /**
+   * Bind the guest whose WebContents identity the Host named.
+   * @param targetId - renderer-side guest identity (WebContents id).
+   * @param allowOrigins - compiled allowlist that still has to contain the guest's current origin.
+   * @returns the bound target identity and its current URL.
+   * @throws AutomationBrokerError with `target/not-found` or `target/origin-denied`.
+   */
+  private attachGuest(targetId: number, allowOrigins: readonly OriginRule[]): AutomationTarget {
+    const match = this.guests.automationGuests().find(({ guest }) => guest.id === targetId)
+    if (match === undefined) {
+      throw new AutomationBrokerError('target/not-found', 'desktop automation: the requested guest is not attached')
+    }
+    if (!originAllowed(match.guest.getURL(), allowOrigins)) {
+      throw new AutomationBrokerError('target/origin-denied', 'desktop automation: the requested guest left the approved origins')
+    }
+    return this.bindTarget(match, allowOrigins)
+  }
+
+  private bindTarget(match: AutomationGuest, allowOrigins: readonly OriginRule[]): AutomationTarget {
+    const previous = this.attachedTargets.get(match.targetId)
+    this.attachedTargets.set(match.targetId, { allowOrigins, pending: previous?.pending ?? Promise.resolve() })
+    this.closedTargets.delete(match.targetId)
+    return { targetId: match.targetId, url: match.guest.getURL() }
   }
 
   private async execute(targetId: DesktopBrowserLeaseId, script: string, timeoutMs: number): Promise<unknown> {
@@ -620,7 +661,7 @@ export function createAutomationWorkbenchHandler(
   return async (op, params) => {
     switch (op) {
       case AUTOMATION_WORKBENCH_OPS.attach:
-        return broker.attach({ allowOrigins: params['allowOrigins'] })
+        return broker.attach({ allowOrigins: params['allowOrigins'], targetId: params['targetId'] })
       case AUTOMATION_WORKBENCH_OPS.evaluate:
         return await broker.evaluate({
           targetId: params['targetId'],

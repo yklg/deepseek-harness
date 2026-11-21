@@ -131,6 +131,9 @@ function probeState(origins: readonly string[], probe: PlatformProbe | undefined
   if (probe === undefined || probe.url === '') return 'unknown'
   let url: URL
   try { url = new URL(probe.url) } catch { return 'unknown' }
+  // A guest address that is not a plain https platform origin proves nothing about the
+  // session, even when the browser would resolve its origin to the platform.
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return 'out'
   const onPlatform = origins.includes(url.origin)
   if (!onPlatform || LOGIN_PATH.test(url.pathname) || LOGIN_TEXT.test(probe.text)) return 'out'
   if (CONSOLE_TEXT.test(probe.text)) return 'in'
@@ -141,6 +144,8 @@ function probeState(origins: readonly string[], probe: PlatformProbe | undefined
 
 /**
  * Classify a guest address against one platform's URL taxonomy.
+ * The origin gate runs before path prefixes so a foreign address that repeats a
+ * console path can never be classified as an internal console page.
  * @param origins - application origins eligible for probing.
  * @param loginOrigins - sign-in origins.
  * @param consoleEntry - console destinations.
@@ -152,10 +157,15 @@ function classifyPlatformUrl(origins: readonly string[], loginOrigins: readonly 
   let url: URL
   try { url = new URL(value) } catch { return 'external' }
   if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return 'external'
+  const platformOrigin = origins.includes(url.origin)
+  const loginOrigin = loginOrigins.includes(url.origin)
+  if (!platformOrigin && !loginOrigin) return 'external'
   const path = url.pathname.replace(/\/+$/, '') || '/'
-  if (consoleEntry.pathPrefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) return 'console'
-  if (origins.includes(url.origin)) return LOGIN_PATH.test(url.pathname) ? 'login' : 'platform'
-  return loginOrigins.includes(url.origin) ? 'login' : 'external'
+  if (platformOrigin && consoleEntry.pathPrefixes.some(prefix => path === prefix || path.startsWith(`${prefix}/`))) {
+    return 'console'
+  }
+  if (LOGIN_PATH.test(url.pathname) || !platformOrigin) return 'login'
+  return 'platform'
 }
 
 /** Douyin Shop merchant backend. */

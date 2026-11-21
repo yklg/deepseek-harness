@@ -122,11 +122,11 @@
 
 | 主题 | 提交 | 要点 |
 |---|---|---|
-| 工作台优先外壳 + 悬浮 AI 助手 | `b36acd05` | 默认主面板=工作台、侧栏默认收起/紧凑；抽出 `EmbeddedConversation` 供浮窗复用；`AssistantWindow` 支持拖拽/8 向缩放/边缘吸附/位置持久化、任意页面呼出；产品顶栏避让 `shell.leading`；平台登录一次性转场进中控；desktop broker 增加 `backgroundThrottling`；dockkit/sidebar chrome clearance 修复 |
-| 百应登录入口 + 登录成功判定 | `d4507daf`、`b734b4e5` | 百应改用 canonical 登录入口；登录后首页 URL 白名单判定为已登录并进入中控 |
-| 中控页面缩放 | `56a74c25`、`06efa591` | toolbar + 快捷键 + 每 tab 持久化；默认 80%、支持输入百分比；Web iframe 隐藏缩放组 |
-| 中控座位与侧栏同源动画、导航去重 | `5abdaf99` | 座位几何/过渡交给 frame（复用 `data-animating`）；删除控制台顶栏重复的导航文本按钮，保留侧栏/系统 caption 入口 |
-| 浮窗对话输入框停靠 + Web 布局 e2e | `3ce0ffd8`、`5d2a1db2` | 嵌入式会话 composer 停靠、浮窗宿主铺满；新增 `assistant-window-layout.e2e.ts` |
+| 工作台优先外壳 + 悬浮 AI 助手 | 11-09 15:33 | 默认主面板=工作台、侧栏默认收起/紧凑；抽出 `EmbeddedConversation` 供浮窗复用；`AssistantWindow` 支持拖拽/8 向缩放/边缘吸附/位置持久化、任意页面呼出；产品顶栏避让 `shell.leading`；平台登录一次性转场进中控；desktop broker 增加 `backgroundThrottling`；dockkit/sidebar chrome clearance 修复 |
+| 百应登录入口 + 登录成功判定 | 11-09 22:17 / 22:53 | 百应改用 canonical 登录入口；登录后首页 URL 白名单判定为已登录并进入中控 |
+| 中控页面缩放 | 11-09 23:13 / 23:29 | toolbar + 快捷键 + 每 tab 持久化；默认 80%、支持输入百分比；Web iframe 隐藏缩放组 |
+| 中控座位与侧栏同源动画、导航去重 | 11-09 23:54 | 座位几何/过渡交给 frame（复用 `data-animating`）；删除控制台顶栏重复的导航文本按钮，保留侧栏/系统 caption 入口 |
+| 浮窗对话输入框停靠 + Web 布局 e2e | 11-10 23:04 / 23:11 | 嵌入式会话 composer 停靠、浮窗宿主铺满；新增 `assistant-window-layout.e2e.ts` |
 
 验证记录：
 
@@ -142,11 +142,49 @@
 - 真机已验（2026-11-21，隔离 dev 实例 + CDP）：清 guest cookie 并跳转百应登录页模拟会话过期 → 中控顶栏登录态变「未登录」、失效横幅出现（「登录已失效，请重新登录 / 重新登录 / 退出登录」）；点「重新登录」→ 横幅消失、回到百应官方扫码登录页。
 - 未完成（dev 实例已留在百应扫码页）：扫码后登录刷新与自动进中控、失效后「退出登录」清分区、`autoEnter` 冷启动、横幅明暗主题/窄宽换行；`build:check` 曾因测试中 `consoleEntry.urls[0]` 的可空类型失败，已修。
 
+## M2-2 验证记录：broker 精确 targetId 会话化（2026-11-21）
+
+- 行为：桌面 `AutomationBroker.attach` 增加可选 `targetId`（渲染层 guest 的 WebContents 身份）：在已绑定 guest 中按 `guest.id` 精确选择，并复核当前 URL 仍命中 allowOrigins；未知 id → `target/not-found`，id 存在但已离开批准 origin → `target/origin-denied`；缺省保持 origin 扫描与 `target/ambiguous`。Host `WorkbenchAttachRequest.targetId?: number` 在 wire 边界校验正安全整数，非法 → `workbench/invalid-request` 且不发送通道请求；字段缺省不发送，兼容旧桌面。client 把 `BrowserSurface.state.targetId` 同步进 `ConsoleSnapshot`，`ConsoleProbePort` 改为单 options 对象并随每次 probe 下发；无 targetId 时仍按 origin attach。
+- 验证：affected suites 23 files / 391 tests PASS（client 17/316、server 50、desktop broker 25）；`tsc -b` 三项目 PASS；`build:artifacts` 已重新生成 typert Remote schema 与 client lib；oxlint 0。
+- 未验证：真实 Electron 双 guest 场景（单测用 fake WebContents），留待真机复核。
+
+## M2-3 验证记录：AI 侧栏 + 草稿 + PII 脱敏（2026-11-21）
+
+- 行为：右栏新增 `ai-sidebar` tab：读取当前中控 guest 可见文本（Host Remote evaluate，attach 带精确 targetId）→ 本地 PII 脱敏（手机号/身份证/单号/地址掩码，显示脱敏计数）→ 生成三类草稿提示词（商品讲解脚本/快捷语/评论回复），可复制或直接打开悬浮 AI 助手；未打开中控时显示本地化空态；不发送、不改价、不操作平台。工作台系统状态行新增「AI 侧栏」入口。
+- 接线：`registerAiSidebar(ctx, …)` 注册 tab 类型 + `sidebar.right.pane.tab`/`title` keyed 槽；全部文案 8 语言。
+- 验证：client 17 files / 316 tests PASS（pii 10、ai-context 17、ai-sidebar 12 新增）；`verify-client-ui-i18n`（1300 files）、README pairing、oxlint 0、`tsc -b` PASS。
+- 未验证：真实 Electron 下 tab 视觉/剪贴板/读取体验未目视；jsdom + fake Remote 已覆盖行为与请求参数。
+
+## M3-1 验证记录：mock 平台页测试 + URL 分类安全修复（2026-11-21）
+
+- 新增 `platform-mock-pages.client.spec.ts`（74 tests，jsdom 执行真实 `probeScript`）：抖店/百应 login/console/home、营销页、空访客、URL taxonomy 49 例与边界（相似域名/尾点/端口/http/userinfo/超长）。
+- **修复安全缺口**：`classifyPlatformUrl` 原先先匹配 console path 再校验 origin，外部域名只要路径命中 console 前缀即被判为内部 `console`，`followLink` 会把 guest 导航到站外；现改为 origin 优先（非 https / 带 userinfo 一律 external）。`probeState` 对非 https/带 userinfo 地址判 `out`，与 classify 口径一致；对应 `it.fails` 改为正向断言。
+- 已知未修：`LOGIN_PATH` 对任意 `/account` 段判 login（如 `/account/index`），属保守判定，待真机校准。
+- 验证：mock spec 74/74 PASS；platform/controller/probe 套件 145 PASS；client 全量 316 PASS。
+
+## M3-2 验证记录：全量 GUI 门禁（2026-11-21）
+
+- 首次 `test:gui`：749 files 中 4 failed / 6 tests failed，全部位于 `packages/client/ui-theme/tests` 对既有产品 CSS 的契约检查（非本轮新增类）：`AssistantWindow.module.css` 的 `.host` 中性边框叠 elevation、`.close:hover` 未加 hover-capable guard；`WorkbenchPage.module.css` 的 1px 中性边框/1px 分隔线、`border-radius: 50%` 缺 `corner-shape: round`、layer-2 卡片所在滚动容器未 rebind 高位滚动条色对。均已按仓库既有约定修复。
+- 修复后复跑：`test:gui` **749 files / 13154 passed / 1 skipped**，186.6s；`test:docs` 21/21（含修复 FORK 中的提交哈希引用，改用日期）；`verify-client-ui-i18n` 1300 files、`verify-translation-pairing` 1214 pairs、oxlint 0。
+- 构建/性能：`build:artifacts` 8/8 gates，16.7s；`build:check` 2/2，33.8s；affected suites 391 tests / 3.3s；ecom client 316 tests / 3.2s（本机 macOS arm64，仅作相对参考）。
+
+## 真机验收矩阵（2026-11-21，隔离 dev 实例 + CDP）
+
+| 项 | 状态 |
+|---|---|
+| 启动即工作台、侧栏收起（冷启动） | ✅ 重载后 frame sidebar 0px、工作台首屏 |
+| 会话失效横幅 + 重新登录 | ✅ 强制过期 → 横幅 → 重新登录 → 回百应扫码页 |
+| 扫码后 ≤5s 登录态刷新 + 自动进中控 | ⏳ 待用户扫码 |
+| 失效后「退出登录」清平台分区 | ⏳ 待用户扫码（按钮仅在横幅内） |
+| `autoEnter` 冷启动自动进中控 | ⏳ 待用户扫码后重启验证 |
+| 中控保活 / 切换平台 / 页面缩放 | ⏳（缩放曾在本机 dev 验证；本轮未复测） |
+| AI 侧栏（新）视觉/剪贴板/读取 | ⏳ 需真实 Electron + 平台页 |
+| broker 同 origin 双 guest 精确 attach | ⏳ 单测覆盖，真机未验 |
+| Windows/Web 收起 rail 视觉 | ⏳ 需对应平台 |
+
 ## 当前状态与下一步（2026-11-21）
 
-- **已完成**：M0/M1 + 产品体验轮（工作台优先、悬浮 AI、平台登录/中控、缩放、动效、导航去重）；M2-1 登录失效横幅 + 重新登录 + 退出登录清平台分区。
-- **M2 其余**：AI 侧栏 draft + PII 脱敏；broker 精确 `targetId` 会话化（当前同 origin 多 guest 会 `target/ambiguous`）。
-- **M3**：mock 平台页 e2e、真人手验矩阵、性能实测、全量门禁/文档。
-- **真机验收（需用户扫码）**：登录态刷新、`autoEnter` 冷启动进中控、中控保活、失效横幅/重新登录/退出登录清分区、Windows/Web 收起 rail 视觉。
-- **后续**：高风险写执行器（发送/改价/上下架/库存；审批策略已就位）、Windows 未签名打包、品牌/图标。
-- **待确认**：中控深链（当前 `lastConsoleUrl`）、`live-console` 右侧 tab 去留、PII 字段范围。
+- **已完成并推送**：M0/M1 + 产品体验轮 + M2（登录失效/退出登录、broker 精确 targetId、AI 侧栏+PII）+ M3-1（mock 平台页与 URL 分类安全修复）+ M3-2（全量 GUI 门禁修复后全绿）。
+- **待办（需真机/用户）**：上表 ⏳ 项，尤其扫码后登录刷新、退出登录清分区、`autoEnter` 冷启动、AI 侧栏视觉、同 origin 双 guest 精确 attach、Windows/Web rail。
+- **后续开发**：高风险写执行器（发送/改价/上下架/库存；审批策略已就位）、Windows 未签名打包、品牌/图标、M3 剩余（Web e2e/快照由 CI、更深性能实测）。
+- **待确认**：中控深链（当前 `lastConsoleUrl`）、`live-console` 右侧 tab 去留、PII 字段范围（当前手机号/身份证/单号/地址）。

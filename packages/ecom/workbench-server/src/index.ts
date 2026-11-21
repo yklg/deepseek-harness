@@ -269,8 +269,9 @@ export class WorkbenchService extends TypertRemoteService {
   }
 
   /**
-   * Attach one browser guest whose origin matches the allowlist.
-   * @param request - requested origin rules.
+   * Attach one browser guest whose origin matches the allowlist, or the exact
+   * guest named by the request's renderer-side identity.
+   * @param request - requested origin rules and optional guest identity.
    * @param signal - request cancellation.
    * @returns the attached target.
    */

@@ -38,6 +38,7 @@ afterEach(() => { vi.clearAllMocks() })
 
 type ExecuteJavaScriptMock = Mock<(script: string, userGesture?: boolean) => Promise<unknown>>
 type ContentsFixture = EventEmitter & {
+  readonly id: number
   getURL(): string
   isDestroyed(): boolean
   executeJavaScript: ExecuteJavaScriptMock
@@ -53,9 +54,10 @@ type GuestsFixture = {
   bind(window: WindowFixture, attachInput: (guest: ContentsFixture, name: DesktopBrowserLeaseId) => () => void): void
 }
 
-function contentsFixture(url = 'about:blank') {
+function contentsFixture(url = 'about:blank', id = 1) {
   const state = { url, destroyed: false }
   const contents = Object.assign(new EventEmitter(), {
+    id,
     getURL: () => state.url,
     isDestroyed: () => state.destroyed,
     executeJavaScript: vi.fn(async (_script: string, _userGesture?: boolean): Promise<unknown> => undefined),
@@ -72,10 +74,10 @@ function contentsFixture(url = 'about:blank') {
  */
 function fixtureGuests(guests: InstanceType<typeof DesktopBrowserGuests>): GuestsFixture {
   return {
-    acquire: (contents, workspace, options) => guests.acquire(contents as never, workspace as never, options as never),
-    release: (contents, id) => guests.release(contents as never, id as never),
-    clearStorage: workspace => guests.clearStorage(workspace as never),
-    bind: (window, attachInput) => guests.bind(window as never, attachInput as never),
+    acquire: (contents, workspace, options) => guests.acquire(contents as never, workspace, options),
+    release: (contents, id) => guests.release(contents as never, id),
+    clearStorage: workspace => guests.clearStorage(workspace),
+    bind: (window, attachInput) => { guests.bind(window as never, attachInput as never) },
   }
 }
 
@@ -92,9 +94,9 @@ function fixture() {
 
 type Fixture = ReturnType<typeof fixture>
 
-function attachGuest(f: Fixture, workspace = 'workspace-a', url = 'https://buyin.jinritemai.com/dashboard') {
+function attachGuest(f: Fixture, workspace = 'workspace-a', url = 'https://buyin.jinritemai.com/dashboard', id = 1) {
   const reservation = f.guests.acquire(f.owner.contents, workspace)
-  const guest = contentsFixture(`about:blank#${reservation.lease}`)
+  const guest = contentsFixture(`about:blank#${reservation.lease}`, id)
   f.owner.contents.emit('will-attach-webview', { preventDefault: vi.fn() }, {},
     { src: `about:blank#${reservation.lease}`, partition: reservation.partition })
   f.owner.contents.emit('did-attach-webview', {}, guest.contents)
@@ -221,6 +223,44 @@ describe('automation origin policy', () => {
     attachGuest(ambiguous, 'workspace-b', 'https://buyin.jinritemai.com/second')
     expect(thrownCode(() => ambiguous.broker.attach({ allowOrigins: ['https://buyin.jinritemai.com'] })))
       .toBe('target/ambiguous')
+  })
+
+  it('attaches the exact guest named by its WebContents identity among same-origin guests', async () => {
+    const f = fixture()
+    const first = attachGuest(f, 'workspace-a', 'https://buyin.jinritemai.com/first', 101)
+    const second = attachGuest(f, 'workspace-b', 'https://buyin.jinritemai.com/second', 102)
+    second.guest.executeJavaScript.mockResolvedValueOnce('second')
+    expect(f.broker.attach({ allowOrigins: ['https://buyin.jinritemai.com'], targetId: 102 }))
+      .toEqual({ targetId: second.reservation.lease, url: 'https://buyin.jinritemai.com/second' })
+    await expect(f.broker.evaluate({ targetId: second.reservation.lease, script: 'return document.title' }))
+      .resolves.toBe('second')
+    expect(second.guest.executeJavaScript).toHaveBeenCalledWith('return document.title', true)
+    expect(first.guest.executeJavaScript).not.toHaveBeenCalled()
+    expect(f.broker.targets()).toEqual([
+      { targetId: second.reservation.lease, url: 'https://buyin.jinritemai.com/second' },
+    ])
+  })
+
+  it('reports an unknown guest identity as not found', () => {
+    const f = fixture()
+    attachGuest(f, 'workspace-a', 'https://buyin.jinritemai.com/dashboard', 101)
+    expect(thrownCode(() => f.broker.attach({ allowOrigins: ['https://buyin.jinritemai.com'], targetId: 999 })))
+      .toBe('target/not-found')
+  })
+
+  it('denies an explicit guest whose current origin left the allowlist', () => {
+    const f = fixture()
+    attachGuest(f, 'workspace-a', 'https://evil.example/phish', 101)
+    expect(thrownCode(() => f.broker.attach({ allowOrigins: ['https://buyin.jinritemai.com'], targetId: 101 })))
+      .toBe('target/origin-denied')
+  })
+
+  it('rejects attach identities that are not positive WebContents ids', () => {
+    const f = fixture()
+    attachGuest(f)
+    for (const targetId of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1, '7']) {
+      expect(() => f.broker.attach({ allowOrigins: ['https://buyin.jinritemai.com'], targetId })).toThrow(TypeError)
+    }
   })
 
   it('rejects allowlists that are not origins or domain suffixes', () => {
@@ -369,5 +409,21 @@ describe('automation workbench handler', () => {
       [{ targetId: reservation.lease, url: 'https://buyin.jinritemai.com/dashboard' }])
     await expect(handle('automation/detach', { targetId: reservation.lease })).resolves.toBeNull()
     await expect(handle('automation/unknown', {})).rejects.toThrow('unsupported operation')
+  })
+
+  it('routes an explicit WebContents identity to the broker', async () => {
+    const f = fixture()
+    attachGuest(f, 'workspace-a', 'https://buyin.jinritemai.com/first', 101)
+    const second = attachGuest(f, 'workspace-b', 'https://buyin.jinritemai.com/second', 102)
+    const handle = createAutomationWorkbenchHandler(f.broker)
+    await expect(handle('automation/attach', { allowOrigins: ['https://buyin.jinritemai.com'], targetId: 102 }))
+      .resolves.toEqual({ targetId: second.reservation.lease, url: 'https://buyin.jinritemai.com/second' })
+    expect(f.broker.targets()).toEqual([
+      { targetId: second.reservation.lease, url: 'https://buyin.jinritemai.com/second' },
+    ])
+    await expect(handle('automation/attach', { allowOrigins: ['https://buyin.jinritemai.com'], targetId: 999 }))
+      .rejects.toMatchObject({ code: 'target/not-found' })
+    await expect(handle('automation/attach', { allowOrigins: ['https://buyin.jinritemai.com'], targetId: 'nope' }))
+      .rejects.toBeInstanceOf(TypeError)
   })
 })

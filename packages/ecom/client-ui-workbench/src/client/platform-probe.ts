@@ -1,8 +1,9 @@
 /**
  * Login probe over the Host automation broker: attach one guest on the
- * platform origins, evaluate the platform's read-only probe script, release
- * the guest, and validate the JSON snapshot before the console controller
- * reads a login state from it.
+ * platform origins, or the exact guest identity the active surface reports,
+ * evaluate the platform's read-only probe script, release the guest, and
+ * validate the JSON snapshot before the console controller reads a login state
+ * from it.
  */
 
 import type { RemoteResult } from '@deepseek-ai/dsh-api-remotes/client'
@@ -15,8 +16,8 @@ import type { PlatformProbe } from './platforms.ts'
 /** The workbench Remote methods a login probe calls. */
 export interface WorkbenchProbeRemote {
   /**
-   * Attach a guest on the requested origins.
-   * @param request - origins the guest may keep while it is evaluated.
+   * Attach a guest on the requested origins, or the exact guest identity when known.
+   * @param request - origins the guest may keep while it is evaluated and the guest identity, when reported.
    * @param signal - aborts the call when the platform changes or the controller disposes.
    * @returns the attached automation target.
    */
@@ -86,8 +87,14 @@ function unwrapRemote<T>(result: RemoteResult<T>): T {
  * @returns a console probe port that attaches, evaluates, and always releases the guest.
  */
 export function createWorkbenchProbe(remote: WorkbenchProbeRemote): ConsoleProbePort {
-  return async (platform, signal) => {
-    const target = unwrapRemote(await remote.attach({ allowOrigins: platform.origins }, signal))
+  return async (platform, options) => {
+    const { signal, targetId } = options
+    // The identity field is omitted, not sent as undefined, so a provider that
+    // predates it keeps selecting by origin.
+    const target = unwrapRemote(await remote.attach({
+      allowOrigins: platform.origins,
+      ...targetId === undefined ? {} : { targetId },
+    }, signal))
     try {
       const result = unwrapRemote(await remote.evaluate({ targetId: target.targetId, script: platform.probeScript }, signal))
       return parseProbe(result.json)

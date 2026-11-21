@@ -66,6 +66,9 @@
   min-height: 0;
   padding: 28px 32px;
   overflow: auto;
+  /* The sheet paints layer-2 cards, so its scroll container rebinds the elevated pair. */
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
 }
 
 .content {
@@ -120,6 +123,7 @@
   width: 5px;
   height: 5px;
   margin: 0 5px;
+  corner-shape: round;
   border-radius: 50%;
   background: currentColor;
 }
@@ -157,7 +161,7 @@
   min-height: 148px;
   min-width: 0;
   padding: 16px;
-  border: 1px solid var(--dsw-alias-border-l3);
+  border: 0.5px solid var(--dsw-alias-border-l3);
   border-radius: var(--dsw-radius-lg);
   background: var(--dsw-alias-bg-layer-1);
   color: var(--dsw-alias-label-primary);
@@ -463,7 +467,7 @@
 
 .systemSep {
   flex: none;
-  width: 1px;
+  width: 0.5px;
   height: 10px;
   margin: 0 4px;
   background: var(--dsw-alias-border-l3);
@@ -481,6 +485,7 @@
   flex: none;
   width: 6px;
   height: 6px;
+  corner-shape: round;
   border-radius: 50%;
   background: var(--dsw-alias-label-tertiary);
 }

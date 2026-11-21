@@ -101,6 +101,12 @@ export interface WorkbenchTarget {
 export interface WorkbenchAttachRequest {
   /** Origins the guest may keep while the Host evaluates in it. */
   readonly allowOrigins: readonly string[]
+  /**
+   * Renderer-side guest identity (the desktop guest's WebContents id). It selects
+   * one exact guest when several share a requested origin; omitting it keeps the
+   * origin scan, which fails with `target/ambiguous` when several guests match.
+   */
+  readonly targetId?: number | undefined
 }
 
 /** Evaluate request. */

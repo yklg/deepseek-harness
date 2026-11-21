@@ -30,7 +30,7 @@ Mount the row from a profile bundle (`cordis.patch.yml`). `dsh-bundle-ecom-workb
 
 The row requires `tools` and creates `ctx.workbench`, the Host service later capabilities consume. It accepts `attach`, `evaluate`, `detach`, and `targets` calls over the Electron Host's private IPC channel:
 
-- `attach` binds one browser guest whose current origin matches the request's exact origins or `*.domain` rules. A non-empty `policy.allowedHosts` narrows every request to the deployment's hostnames or suffix rules before the broker sees it.
+- `attach` binds one browser guest whose current origin matches the request's exact origins or `*.domain` rules. An optional `targetId` carries the renderer guest's WebContents identity and binds that exact guest when several share an origin; without it the origin scan fails `target/ambiguous` when several guests match. A non-empty `policy.allowedHosts` narrows every request to the deployment's hostnames or suffix rules before the broker sees it.
 - Calls for one target run strictly one after another; another target proceeds independently.
 - Broker failures keep their stable codes (`target/not-found`, `target/closed`, `script/timeout`, `result/too-large`, and the other automation codes). A missing channel reports `workbench/unavailable`, a closed one `workbench/disconnected`, and a slow one `workbench/timeout`.
 - A target that closes is published to the live console; a count that can no longer be read reports `null` instead of a stale number.

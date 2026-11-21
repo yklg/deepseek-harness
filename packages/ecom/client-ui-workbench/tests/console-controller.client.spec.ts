@@ -5,8 +5,8 @@ import type {
   BrowserFrameState, BrowserSurface, BrowserSurfaceOptions, BrowserSurfaceService,
 } from '@deepseek-ai/dsh-client-ui-sidebar-browser/client'
 import type { HostObservable } from '@deepseek-ai/dsh-client-ui-slots'
-import { ConsoleController, type ConsoleSnapshot } from '../src/client/ConsoleController.ts'
-import { buyin, douyinShop, type PlatformAdapter, type PlatformProbe } from '../src/client/platforms.ts'
+import { ConsoleController, type ConsoleProbePort, type ConsoleSnapshot } from '../src/client/ConsoleController.ts'
+import { buyin, douyinShop, type PlatformProbe } from '../src/client/platforms.ts'
 
 /** One controllable surface handed out by the fake provider. */
 interface FakeSurface extends BrowserSurface {
@@ -82,7 +82,7 @@ const buyinInProbe: PlatformProbe = { url: 'https://buyin.jinritemai.com/dashboa
  * @param available - whether the surface provider is usable.
  * @returns the controller with its fakes.
  */
-function controllerFor(probe: (platform: PlatformAdapter, signal: AbortSignal) => Promise<PlatformProbe>,
+function controllerFor(probe: ConsoleProbePort,
   available = true): { controller: ConsoleController; surfaces: FakeSurface[] } {
   const { provider, surfaces } = fakeProvider(available)
   const controller = new ConsoleController({
@@ -148,8 +148,8 @@ describe('ConsoleController', () => {
 
   it('keeps the last login state and retries after a probe failure', async () => {
     let fail = false
-    const { controller, surfaces } = controllerFor(async (_platform, signal) => {
-      signal.throwIfAborted()
+    const { controller, surfaces } = controllerFor(async (_platform, options) => {
+      options.signal.throwIfAborted()
       if (fail) throw new Error('automation unavailable')
       return inProbe
     })
@@ -219,6 +219,29 @@ describe('ConsoleController', () => {
     await controller.dispose()
   })
 
+  it('publishes the guest identity of the active surface and hands it to the probe', async () => {
+    const probed: Array<number | undefined> = []
+    const { controller, surfaces } = controllerFor(async (_platform, options) => {
+      probed.push(options.targetId)
+      return inProbe
+    })
+    await controller.open('douyin-shop')
+    expect(snapshotOf(controller).targetId).toBeUndefined()
+    surfaces[0]?.emit({ target: { kind: 'https', url: 'https://fxg.jinritemai.com/', title: '抖店' },
+      address: 'observed', loading: false })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(probed).toEqual([])
+    surfaces[0]?.emit({ targetId: 7 })
+    expect(snapshotOf(controller).targetId).toBe(7)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(probed).toEqual([7])
+    surfaces[0]?.emit({ targetId: 8 })
+    expect(snapshotOf(controller).targetId).toBe(8)
+    await controller.open('buyin')
+    expect(snapshotOf(controller).targetId).toBeUndefined()
+    await controller.dispose()
+  })
+
   it('reports a surface failure and retries through reload', async () => {
     const { controller, surfaces } = controllerFor(async () => inProbe)
     await controller.open('douyin-shop')
@@ -231,8 +254,8 @@ describe('ConsoleController', () => {
 
   it('aborts the in-flight probe and releases the surface on dispose, joining repeated calls', async () => {
     let aborted = false
-    const { controller, surfaces } = controllerFor((_platform, signal) => new Promise<PlatformProbe>((_resolve, reject) => {
-      signal.addEventListener('abort', () => {
+    const { controller, surfaces } = controllerFor((_platform, options) => new Promise<PlatformProbe>((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => {
         aborted = true
         reject(new Error('probe aborted'))
       })

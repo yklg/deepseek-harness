@@ -53,6 +53,8 @@ export interface WorkbenchPageInjected {
   readonly openLiveConsole: () => Promise<boolean>
   /** Open the browser tab in the selected conversation; false when none is selected. */
   readonly openBrowser: () => Promise<boolean>
+  /** Open the AI-sidebar tab in the selected conversation; false when none is selected. */
+  readonly openAiSidebar: () => Promise<boolean>
 }
 
 /** Product home props: the keyed main seat, injected stores, and localized copy. */
@@ -170,7 +172,7 @@ function ProductMark(): ReactNode {
 export function WorkbenchPage(props: WorkbenchPageProps): ReactNode {
   const {
     useStatus, useOverview, useConsole, usePlatformPreferences, useSidebar, platformsAvailable, openPlatform,
-    setAutoEnter, toggleAssistant, toggleNavigation, refreshStatus, refreshOverview, openLiveConsole, openBrowser, t,
+    setAutoEnter, toggleAssistant, toggleNavigation, refreshStatus, refreshOverview, openLiveConsole, openBrowser, openAiSidebar, t,
   } = props
   const status = useStatus(snapshot => snapshot)
   const overview = useOverview(snapshot => snapshot)
@@ -367,6 +369,7 @@ export function WorkbenchPage(props: WorkbenchPageProps): ReactNode {
             <div className={css.systemActions}>
               <Button size="sm" variant="ghost" onClick={refreshStatus}>{t('panel.quick.refresh')}</Button>
               <Button size="sm" variant="ghost" onClick={() => { runAction(openBrowser) }}>{t('panel.quick.browser')}</Button>
+              <Button size="sm" variant="ghost" onClick={() => { runAction(openAiSidebar) }}>{t('aiSidebar.title')}</Button>
               <Button size="sm" variant="ghost" onClick={() => { runAction(openLiveConsole) }}>{t('panel.quick.console')}</Button>
             </div>
             {hint === undefined ? null : <p className={css.hint} role="status">{hint}</p>}

@@ -32,6 +32,8 @@ export interface ConsoleSnapshot {
   readonly checking: boolean
   /** Address the active surface currently shows, when it reported one. */
   readonly url: string | undefined
+  /** Desktop guest identity of the active surface, undefined before its carrier attaches the guest. */
+  readonly targetId?: number | undefined
   /** Effective embedded-page zoom, when the carrier supports it. */
   readonly zoomFactor?: number | undefined
   /** Inclusive zoom limits of the active carrier, when it supports zoom. */
@@ -48,13 +50,21 @@ export interface ConsoleSnapshot {
   readonly blockedLink?: boolean | undefined
 }
 
+/** One login probe request: the platform and the guest identity to attach precisely. */
+export interface ConsoleProbeOptions {
+  /** Aborts the read when the platform changes or the controller disposes. */
+  readonly signal: AbortSignal
+  /** Guest identity of the active surface; omitted falls back to the origin scan. */
+  readonly targetId?: number | undefined
+}
+
 /**
  * Read one login probe from the platform guest.
  * @param platform - adapter whose probe script is evaluated.
- * @param signal - aborts the read when the platform changes or the controller disposes.
+ * @param options - probe cancellation and the active surface's guest identity, when it has one.
  * @returns the read-only page snapshot.
  */
-export type ConsoleProbePort = (platform: PlatformAdapter, signal: AbortSignal) => Promise<PlatformProbe>
+export type ConsoleProbePort = (platform: PlatformAdapter, options: ConsoleProbeOptions) => Promise<PlatformProbe>
 
 /** Construction inputs for {@link ConsoleController}. */
 export interface ConsoleControllerOptions {
@@ -153,7 +163,7 @@ export class ConsoleController {
     if (platform === undefined) throw new Error(`console controller: unknown platform "${platformId}"`)
     if (!this.available) {
       this.publish({ view: 'select', phase: 'failed', platformId: null, loginState: 'unknown',
-        loginExpired: false, checking: false, url: undefined, probeError: undefined })
+        loginExpired: false, checking: false, url: undefined, targetId: undefined, probeError: undefined })
       return
     }
     if (this.snapshot.platformId === platformId && this.surface !== undefined) {
@@ -168,7 +178,7 @@ export class ConsoleController {
     const generation = ++this.generation
     this.stopProbe()
     this.publish({ view: 'console', phase: 'starting', platformId, loginState: 'unknown', loginExpired: false,
-      checking: false, url: undefined, zoomFactor: undefined, zoomLimits: undefined,
+      checking: false, url: undefined, targetId: undefined, zoomFactor: undefined, zoomLimits: undefined,
       error: undefined, probeError: undefined, logoutError: undefined, pageIssue: undefined, blockedLink: undefined })
     await this.releaseSurface()
     if (this.isStale(generation)) return
@@ -376,6 +386,7 @@ export class ConsoleController {
     if (surface === undefined || this.disposed) return
     const frame = surface.state.getSnapshot()
     const url = frame.target?.url
+    if (frame.targetId !== this.snapshot.targetId) this.publish({ targetId: frame.targetId })
     if (frame.zoomFactor !== this.snapshot.zoomFactor) this.publish({ zoomFactor: frame.zoomFactor })
     if (url !== this.snapshot.url) {
       this.publish({ url, blockedLink: undefined })
@@ -434,7 +445,10 @@ export class ConsoleController {
     this.probeAbort = controller
     this.publish({ checking: true })
     try {
-      const probe = await this.options.probe(platform, controller.signal)
+      const probe = await this.options.probe(platform, {
+        signal: controller.signal,
+        targetId: this.snapshot.targetId,
+      })
       if (this.isStale(generation, controller.signal)) return
       this.lastProbeFailed = false
       // Expiry needs a signed-in observation first; a probe that never saw `in` is a plain signed-out guest.
@@ -531,7 +545,7 @@ export class ConsoleController {
     this.unmount = undefined
     const surface = this.surface
     this.surface = undefined
-    this.publish({ zoomFactor: undefined, zoomLimits: undefined })
+    this.publish({ targetId: undefined, zoomFactor: undefined, zoomLimits: undefined })
     if (surface === undefined) return
     try {
       await surface.dispose()

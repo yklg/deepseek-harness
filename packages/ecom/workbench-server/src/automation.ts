@@ -220,12 +220,17 @@ export class WorkbenchAutomation {
 
   /**
    * Attach one guest whose origin matches the requested allowlist.
-   * @param request - origin allowlist.
+   * @param request - origin allowlist and optional renderer-side guest identity.
    * @param signal - request cancellation.
    * @returns the attached target.
    */
   async attach(request: WorkbenchAttachRequest, signal?: AbortSignal): Promise<WorkbenchTarget> {
     this.assertEnabled()
+    const targetId = request.targetId
+    if (targetId !== undefined && (!Number.isSafeInteger(targetId) || targetId <= 0)) {
+      throw new WorkbenchError('workbench/invalid-request',
+        'automation targetId must be a positive safe integer', { operation: 'attach' })
+    }
     const allowOrigins = [...request.allowOrigins]
     const origins = allowOrigins.map(requestOrigin)
     for (const origin of origins) {
@@ -236,7 +241,10 @@ export class WorkbenchAutomation {
     }
     signal?.throwIfAborted()
     return await this.run('attach', undefined, true, async () => {
-      const value = await this.channel.request('automation/attach', { allowOrigins }, signal)
+      const value = await this.channel.request('automation/attach', {
+        allowOrigins,
+        ...targetId === undefined ? {} : { targetId },
+      }, signal)
       const target = parseTarget(value, 'attach')
       this.targetCount = null
       return target

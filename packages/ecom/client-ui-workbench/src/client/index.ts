@@ -36,6 +36,7 @@ import { ConsoleController } from './ConsoleController.ts'
 import { createPlatformPreferencesStore, type PlatformPreferencesStorage } from './platform-preferences.ts'
 import { createWorkbenchProbe } from './platform-probe.ts'
 import { platformById, type PlatformId } from './platforms.ts'
+import { AI_SIDEBAR_KIND, registerAiSidebar } from './ai-sidebar.ts'
 import { startWorkbench } from './startup.ts'
 import { en, ja, es, fr, de, ru, pt, zh } from './locales.ts'
 
@@ -172,6 +173,18 @@ function registerUi(ctx: ClientContext): void {
   }
   const toggleNavigation = (): void => { ctx.layout.toggleSidebar() }
   const toggleAssistant = (): void => { assistant.toggle() }
+  // The AI sidebar reads the active console guest through the same controller and
+  // opens the existing floating assistant; both sources are already wired here.
+  registerAiSidebar(ctx, {
+    remote: ctx.remote.workbench,
+    platform: () => {
+      const platformId = controller.state.getSnapshot().platformId
+      return platformId === null ? undefined : platformById(platformId)
+    },
+    targetId: () => controller.state.getSnapshot().targetId,
+    console: controller.state,
+    openAssistant: toggleAssistant,
+  })
   const jumpConsole = (): void => {
     assistant.close()
     // The console host only draws while the product panel is the active main
@@ -281,6 +294,7 @@ function registerUi(ctx: ClientContext): void {
         refreshOverview: () => { source.refreshOverview() },
         openLiveConsole: () => openTab(LIVE_CONSOLE_KIND),
         openBrowser: () => openTab('browser'),
+        openAiSidebar: () => openTab(AI_SIDEBAR_KIND),
       }),
     }, WorkbenchPage)
     if (!started) {

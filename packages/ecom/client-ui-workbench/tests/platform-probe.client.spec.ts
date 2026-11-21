@@ -62,11 +62,22 @@ function signalOf(): AbortSignal {
 }
 
 describe('workbench login probe', () => {
-  it('attaches on the platform origins, evaluates its script, and releases the guest', async () => {
+  it('attaches by origin, evaluates its script, and releases the guest without a guest identity', async () => {
     const fake = fakeRemote()
     const signal = signalOf()
-    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, signal)
+    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, { signal })
     expect(fake.attach).toHaveBeenCalledWith({ allowOrigins: douyinShop.origins }, signal)
+    expect(Object.hasOwn(fake.attach.mock.calls[0]?.[0] ?? {}, 'targetId')).toBe(false)
+    expect(fake.evaluate).toHaveBeenCalledWith({ targetId: TARGET.targetId, script: douyinShop.probeScript }, signal)
+    expect(fake.detach).toHaveBeenCalledWith({ targetId: TARGET.targetId })
+    expect(probe).toEqual(PROBE)
+  })
+
+  it('attaches the exact guest identity the active surface reports', async () => {
+    const fake = fakeRemote()
+    const signal = signalOf()
+    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, { signal, targetId: 42 })
+    expect(fake.attach).toHaveBeenCalledWith({ allowOrigins: douyinShop.origins, targetId: 42 }, signal)
     expect(fake.evaluate).toHaveBeenCalledWith({ targetId: TARGET.targetId, script: douyinShop.probeScript }, signal)
     expect(fake.detach).toHaveBeenCalledWith({ targetId: TARGET.targetId })
     expect(probe).toEqual(PROBE)
@@ -76,7 +87,7 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       attach: async () => ({ ok: false, error: new RemoteError('workbench/timeout', 'broker timed out', {}) }),
     })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('workbench/timeout: broker timed out')
     expect(fake.evaluate).not.toHaveBeenCalled()
     expect(fake.detach).not.toHaveBeenCalled()
@@ -86,14 +97,14 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       evaluate: async () => ({ ok: false, error: new RemoteError('target/closed', 'guest closed', {}) }),
     })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('target/closed: guest closed')
     expect(fake.detach).toHaveBeenCalledOnce()
   })
 
   it('rejects probe JSON that is not an object', async () => {
     const fake = fakeRemote({ evaluate: async () => evalResult(null) })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('probe result is not an object')
   })
 
@@ -101,7 +112,7 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       evaluate: async () => ({ ok: true, value: { json: 'not-json', bytes: 8 } }),
     })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('probe result is not JSON')
   })
 
@@ -112,7 +123,7 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       evaluate: async () => ({ ok: true, value: { json, bytes: json.length } }),
     })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('probe result must carry string url, title, and text')
   })
 
@@ -120,7 +131,7 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       evaluate: async () => evalResult({ ...PROBE, text: 'a'.repeat(7_000) }),
     })
-    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, signalOf())
+    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() })
     expect(probe.text).toHaveLength(6_000)
   })
 
@@ -128,7 +139,7 @@ describe('workbench login probe', () => {
     const fake = fakeRemote({
       detach: async () => { throw new Error('release transport lost') },
     })
-    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, signalOf())
+    const probe = await createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() })
     expect(probe).toEqual(PROBE)
     expect(fake.detach).toHaveBeenCalledOnce()
   })
@@ -138,7 +149,7 @@ describe('workbench login probe', () => {
       evaluate: async () => ({ ok: false, error: new RemoteError('workbench/disconnected', 'host detached', {}) }),
       detach: async () => ({ ok: false, error: new RemoteError('target/closed', 'guest already closed', {}) }),
     })
-    await expect(createWorkbenchProbe(fake.remote)(douyinShop, signalOf()))
+    await expect(createWorkbenchProbe(fake.remote)(douyinShop, { signal: signalOf() }))
       .rejects.toThrow('workbench/disconnected: host detached')
   })
 })

@@ -30,7 +30,7 @@ kind: "package-reference"
 
 本行依赖 `tools`，并创建 `ctx.workbench`，供后续能力消费的 Host 服务。它通过 Electron Host 的私有 IPC 通道接受 `attach`、`evaluate`、`detach` 与 `targets` 调用：
 
-- `attach` 绑定当前来源匹配请求中精确 origin 或 `*.domain` 规则的浏览器 guest。非空的 `policy.allowedHosts` 会在 broker 收到请求前把每个请求收窄到部署允许的主机名或后缀规则。
+- `attach` 绑定当前来源匹配请求中精确 origin 或 `*.domain` 规则的浏览器 guest。可选的 `targetId` 携带渲染层 guest 的 WebContents 身份，在多个 guest 同源时精确绑定该 guest；缺省时按 origin 扫描，多个 guest 命中会以 `target/ambiguous` 失败。非空的 `policy.allowedHosts` 会在 broker 收到请求前把每个请求收窄到部署允许的主机名或后缀规则。
 - 同一 target 的调用严格串行；不同 target 可并行推进。
 - broker 失败保留稳定错误码（`target/not-found`、`target/closed`、`script/timeout`、`result/too-large` 等自动化错误码）。缺少通道报告 `workbench/unavailable`，通道关闭报告 `workbench/disconnected`，超时报告 `workbench/timeout`。
 - 目标关闭会发布到实时控制台；无法重新读取的目标数量报告 `null`，而不是陈旧数字。

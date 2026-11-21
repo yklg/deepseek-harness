@@ -69,6 +69,30 @@ describe('workbench automation', () => {
     expect(events[1]).toMatchObject({ type: 'run-finished', operation: 'attach', ok: true })
   })
 
+  it('forwards a renderer-side guest identity and omits a missing one', async () => {
+    const channel = new FakeChannel()
+    channel.handler = async () => ({ targetId: 'lease', url: 'https://example.com/live' })
+    const subject = automation(channel)
+    await expect(subject.attach({ allowOrigins: ['https://example.com'], targetId: 42 }))
+      .resolves.toMatchObject({ targetId: 'lease' })
+    await expect(subject.attach({ allowOrigins: ['https://example.com'] }))
+      .resolves.toMatchObject({ targetId: 'lease' })
+    expect(channel.calls).toEqual([
+      { op: 'automation/attach', params: { allowOrigins: ['https://example.com'], targetId: 42 } },
+      { op: 'automation/attach', params: { allowOrigins: ['https://example.com'] } },
+    ])
+  })
+
+  it('rejects a guest identity that is not a positive safe integer', async () => {
+    const channel = new FakeChannel()
+    const subject = automation(channel)
+    for (const targetId of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) {
+      await expect(subject.attach({ allowOrigins: ['https://example.com'], targetId }))
+        .rejects.toMatchObject({ code: 'workbench/invalid-request' })
+    }
+    expect(channel.calls).toEqual([])
+  })
+
   it('keeps every attach rule inside the deployment allowlist', async () => {
     const channel = new FakeChannel()
     channel.handler = async () => ({ targetId: 'lease', url: 'https://example.com' })
